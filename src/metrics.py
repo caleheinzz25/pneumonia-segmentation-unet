@@ -19,6 +19,9 @@ def dice_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> fl
     pred = pred.flatten()
     target = target.flatten()
 
+    if target.sum() == 0 and pred.sum() == 0:
+        return 1.0
+
     intersection = (pred * target).sum()
     return float((2.0 * intersection + smooth) / (pred.sum() + target.sum() + smooth))
 
@@ -37,6 +40,9 @@ def iou_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> flo
     pred = pred.flatten()
     target = target.flatten()
 
+    if target.sum() == 0 and pred.sum() == 0:
+        return 1.0
+
     intersection = (pred * target).sum()
     union = pred.sum() + target.sum() - intersection
     return float((intersection + smooth) / (union + smooth))
@@ -47,6 +53,9 @@ def precision_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) 
     pred = pred.flatten()
     target = target.flatten()
 
+    if pred.sum() == 0:
+        return float('nan')
+
     tp = (pred * target).sum()
     fp = (pred * (1 - target)).sum()
     return float((tp + smooth) / (tp + fp + smooth))
@@ -56,6 +65,9 @@ def recall_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> 
     """Compute Recall (sensitivity / true positive rate)."""
     pred = pred.flatten()
     target = target.flatten()
+
+    if target.sum() == 0:
+        return float('nan')
 
     tp = (pred * target).sum()
     fn = ((1 - pred) * target).sum()
@@ -75,6 +87,9 @@ def specificity_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6
     """Compute Specificity (true negative rate)."""
     pred = pred.flatten()
     target = target.flatten()
+
+    if target.sum() == len(target):
+        return float('nan')
 
     tn = ((1 - pred) * (1 - target)).sum()
     fp = (pred * (1 - target)).sum()
@@ -104,7 +119,12 @@ def auc_score(probs: np.ndarray, target: np.ndarray) -> float:
 
 
 class SegmentationMetrics:
-    """Compute and accumulate segmentation metrics over a dataset."""
+    """Compute and accumulate segmentation metrics over a dataset.
+
+    Correctly handles negative samples (no pneumonia):
+    - dice, iou, precision, recall: skip samples where BOTH pred and target are all-zero
+    - auc: skip samples with only one class in target
+    """
 
     def __init__(self, metrics: list[str] | None = None):
         """
@@ -147,13 +167,22 @@ class SegmentationMetrics:
         pred = (probs >= threshold).astype(np.float32)
         sample_metrics = {}
 
+        # Check if this is a true-negative sample (no pneumonia in GT and no prediction)
+        target_has_positive = target.sum() > 0
+        pred_has_positive = pred.sum() > 0
+
         for metric_name in self.metrics:
             if metric_name == "auc":
+                # AUC is only meaningful when target has both classes
+                if not target_has_positive:
+                    continue  # Skip — don't pollute with 0.5
                 value = self.available_metrics[metric_name](probs, target)
             else:
                 value = self.available_metrics[metric_name](pred, target)
-            self.values[metric_name].append(value)
-            sample_metrics[metric_name] = value
+            
+            if not np.isnan(value):
+                self.values[metric_name].append(value)
+                sample_metrics[metric_name] = value
 
         return sample_metrics
 
@@ -163,10 +192,13 @@ class SegmentationMetrics:
         Returns:
             Dictionary of mean metric values
         """
-        return {
-            metric_name: float(np.mean(values))
-            for metric_name, values in self.values.items()
-        }
+        results = {}
+        for metric_name, values in self.values.items():
+            if len(values) > 0:
+                results[metric_name] = float(np.mean(values))
+            else:
+                results[metric_name] = 0.0
+        return results
 
     def get_summary(self) -> str:
         """Get formatted summary string of metrics."""

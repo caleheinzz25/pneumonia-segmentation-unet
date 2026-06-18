@@ -6,7 +6,12 @@ import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
-    """Dice loss for binary segmentation."""
+    """Dice loss for binary segmentation.
+
+    Skips true-negative samples (both prediction and target are all-zero)
+    so the loss signal is not diluted by the majority of normal samples.
+    False positives on normal images are penalized through the BCE component.
+    """
 
     def __init__(self, smooth: float = 1e-6):
         super().__init__()
@@ -14,12 +19,32 @@ class DiceLoss(nn.Module):
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         probs = torch.sigmoid(logits)
-        probs = probs.view(-1)
-        targets = targets.view(-1)
+        batch_size = probs.shape[0]
 
-        intersection = (probs * targets).sum()
-        dice = (2.0 * intersection + self.smooth) / (probs.sum() + targets.sum() + self.smooth)
-        return 1.0 - dice
+        # Per-sample dice, skipping true negatives to avoid diluting the loss
+        dice_sum = 0.0
+        count = 0
+        for i in range(batch_size):
+            p = probs[i].view(-1)
+            t = targets[i].view(-1)
+            p_sum = p.sum()
+            t_sum = t.sum()
+
+            # Skip true-negative samples — both pred and target are empty
+            # These are handled by BCE loss instead
+            if p_sum < self.smooth and t_sum < self.smooth:
+                continue
+
+            intersection = (p * t).sum()
+            dice = (2.0 * intersection + self.smooth) / (p_sum + t_sum + self.smooth)
+            dice_sum += dice
+            count += 1
+
+        if count == 0:
+            # All samples in batch are true negatives → no dice loss to compute
+            return torch.tensor(0.0, device=logits.device, requires_grad=True)
+
+        return 1.0 - dice_sum / count
 
 
 class TverskyLoss(nn.Module):

@@ -8,6 +8,7 @@ import numpy as np
 import torch
 
 from src.config import Config, load_config
+from src.lung_segmentation import LungSegmenter
 from src.model import build_model
 from src.transforms import get_validation_transforms
 from src.utils import (
@@ -16,6 +17,7 @@ from src.utils import (
     overlay_mask,
     read_dicom,
     resize_image_mask,
+    setup_logging,
 )
 
 
@@ -24,6 +26,7 @@ def predict_single(
     image_path: str | Path,
     config: Config,
     device: str,
+    lung_segmenter: LungSegmenter | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Predict on a single image.
 
@@ -41,6 +44,8 @@ def predict_single(
     # Read image
     if image_path.suffix.lower() in [".dcm", ".dicom"]:
         image = read_dicom(image_path)
+        if config.preprocessing.normalize and not config.preprocessing.apply_lung_window:
+            image = image / 255.0
     else:
         image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
         if image is None:
@@ -60,6 +65,30 @@ def predict_single(
     # Resize
     target_w, target_h = config.preprocessing.image_size[1], config.preprocessing.image_size[0]
     image_resized, _ = resize_image_mask(image, None, (target_w, target_h))
+
+    # Apply lung mask to focus on lung regions (consistent with training)
+    lung_mask_applied = False
+    lung_mask_dirs = [config.data.test_lung_mask_dir, config.data.lung_mask_dir]
+    patient_id = image_path.stem
+    for mask_dir in lung_mask_dirs:
+        if mask_dir is None:
+            continue
+        mask_path = Path(mask_dir) / f"{patient_id}.png"
+        if mask_path.exists():
+            lung_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            if lung_mask is not None:
+                lung_mask = (lung_mask > 127).astype(np.float32)
+                lung_mask = cv2.resize(lung_mask, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
+                image_resized = image_resized * lung_mask
+                lung_mask_applied = True
+            break
+
+    # Fallback: auto lung segmentation if no precomputed mask found
+    if not lung_mask_applied and lung_segmenter is not None:
+        lung_mask = lung_segmenter.segment(image_resized, target_h=target_h, target_w=target_w)
+        image_resized = image_resized * lung_mask
+        lung_mask_applied = True
+
     image_rgb = grayscale_to_rgb(image_resized)
 
     # Normalize and convert to tensor
@@ -103,6 +132,7 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+    setup_logging(logs_dir=config.output.logs_dir, run_name="predict")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load model
@@ -110,6 +140,9 @@ def main():
     checkpoint = torch.load(config.inference.model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
+
+    # Load lung segmenter for auto lung masking
+    lung_segmenter = LungSegmenter(device=device)
 
     input_path = Path(args.input)
     output_dir = Path(args.output) if args.output else Path(config.inference.output_dir)
@@ -121,7 +154,7 @@ def main():
         image_paths = list(input_path.glob("*.dcm")) + list(input_path.glob("*.png"))
 
     for img_path in image_paths:
-        prob, original_image = predict_single(model, img_path, config, device)
+        prob, original_image = predict_single(model, img_path, config, device, lung_segmenter=lung_segmenter)
         pred_mask = (prob >= config.inference.threshold).astype(np.float32)
 
         # Save prediction

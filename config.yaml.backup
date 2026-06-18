@@ -61,7 +61,7 @@ training:
   # Batch size
   batch_size: 4
   # Number of epochs
-  epochs: 80
+  epochs: 50
   # Number of dataloader workers
   num_workers: 8
   # Pin memory for faster GPU transfer
@@ -81,43 +81,43 @@ training:
   # Split by patient ID to avoid data leakage
   stratified_split: true
   # Early stopping patience (epochs)
-  early_stopping_patience: 25
+  early_stopping_patience: 20
   # Number of epochs to freeze the encoder backbone at start (warmup)
-  encoder_freeze_epochs: 1
+  encoder_freeze_epochs: 2
 
 # ------ Optimizer ------
 optimizer:
   # Optimizer type: "adamw", "adam", "sgd"
   type: "adamw"
   # Initial learning rate
-  lr: 1.5e-4
+  lr: 3.0e-4
   # Weight decay (L2 regularization)
-  weight_decay: 1.0e-4
+  weight_decay: 7.0e-4
 
 # ------ Learning Rate Scheduler ------
 scheduler:
   # Scheduler type: "reduce_on_plateau", "cosine_annealing", "one_cycle"
-  type: "cosine_annealing"
+  type: "one_cycle"
   # ReduceLROnPlateau settings
   reduce_factor: 0.5
   reduce_patience: 6
   reduce_min_lr: 1.0e-7
   # CosineAnnealing settings
-  cosine_t_max: 80
+  cosine_t_max: 50
   cosine_eta_min: 1.0e-7
 
 # ------ Loss Function ------
 loss:
   # Loss type: "dice_bce", "focal_tversky", "dice", "bce"
-  type: "focal_tversky"
+  type: "dice_bce"
   # Weight for BCE in combined loss (dice weight = 1 - bce_weight)
-  bce_weight: 0.4
+  bce_weight: 0.3
   # Focal Tversky parameters
   tversky_alpha: 0.7
   tversky_beta: 0.3
   tversky_gamma: 0.75
   # Class weight for positive pixels (pneumonia) to handle imbalance
-  pos_weight: 1.5
+  pos_weight: 2.0
 
 # ------ Data Augmentation ------
 augmentation:

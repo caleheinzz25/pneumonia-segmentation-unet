@@ -1,7 +1,10 @@
-"""Utility functions for DICOM reading, mask generation, and seeding."""
+"""Utility functions for DICOM reading, mask generation, logging, and seeding."""
 
+import atexit
 import os
 import random
+import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -9,6 +12,150 @@ import cv2
 import numpy as np
 import pydicom
 import torch
+
+
+class TeeStream:
+    """Stream wrapper that writes to both a file and the original stream.
+
+    Handles tqdm-style progress bars that use carriage return (``\r``) to
+    overwrite the current line.  Only the final state of each line is
+    written to the log file (i.e. when ``\n`` arrives), keeping it clean.
+    """
+
+    def __init__(self, stream, log_file):
+        self.stream = stream
+        self.log_file = log_file
+        self._line_buf = ""  # buffer for \r-overwritten content
+
+    def write(self, data: str) -> int:
+        # Always pass everything to the terminal immediately
+        self.stream.write(data)
+
+        # For the log file: only write completed lines
+        for char in data:
+            if char == "\r":
+                # Carriage return → discard buffer (tqdm overwrite)
+                self._line_buf = ""
+            elif char == "\n":
+                # Newline → this line is final, write it to the log
+                self.log_file.write(self._line_buf + "\n")
+                self.log_file.flush()
+                self._line_buf = ""
+            else:
+                self._line_buf += char
+
+        return len(data)
+
+    def flush(self) -> None:
+        # Only flush the terminal stream; do NOT dump _line_buf to the log.
+        # Intermediate \r updates from tqdm call flush() constantly —
+        # writing them would defeat the whole purpose of buffering.
+        self.stream.flush()
+
+    def close(self) -> None:
+        """Flush any remaining buffered content and close the log file."""
+        if self.log_file.closed:
+            return
+        if self._line_buf:
+            self.log_file.write(self._line_buf + "\n")
+            self._line_buf = ""
+        self.log_file.flush()
+        self.log_file.close()
+
+    def fileno(self):
+        return self.stream.fileno()
+
+    def isatty(self) -> bool:
+        return self.stream.isatty()
+
+
+import json
+
+def setup_logging(
+    logs_dir: str = "outputs/logs",
+    run_name: str = "run",
+    resume: bool = False,
+) -> Path:
+    """Set up terminal logging to a file.
+
+    Creates a new timestamped log file in ``logs_dir`` and redirects
+    both ``sys.stdout`` and ``sys.stderr`` through a ``TeeStream`` so
+    that all terminal output is simultaneously written to the log file.
+
+    When ``resume=True``, appends to the original log file of the current
+    run (tracked via a JSON state file) instead of creating a new one.
+
+    Args:
+        logs_dir: Directory where log files are stored.
+        run_name: Prefix for the log filename (e.g. "train", "evaluate").
+        resume: If True, append to the existing log file tracked in state.
+
+    Returns:
+        Path to the log file (new or existing).
+    """
+    logs_path = Path(logs_dir)
+    logs_path.mkdir(parents=True, exist_ok=True)
+
+    state_file = logs_path / f"{run_name}_state.json"
+    log_filepath = None
+
+    if resume:
+        # Read the exact log file path from state file
+        if state_file.exists():
+            try:
+                with open(state_file, "r") as f:
+                    state = json.load(f)
+                    saved_log = state.get("current_log")
+                    if saved_log:
+                        potential_path = Path(saved_log)
+                        if potential_path.exists():
+                            log_filepath = potential_path
+            except Exception as e:
+                print(f"[WARNING] Could not read log state: {e}")
+
+        # Fallback to the most recent if state file is missing
+        if log_filepath is None:
+            existing_logs = sorted(
+                logs_path.glob(f"{run_name}_*.log"),
+                key=lambda p: p.stat().st_mtime,
+            )
+            if existing_logs:
+                log_filepath = existing_logs[-1]
+
+    if log_filepath is None:
+        # Create a new log file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"{run_name}_{timestamp}.log"
+        log_filepath = logs_path / log_filename
+        
+        # Save this new log file path to the state file
+        try:
+            with open(state_file, "w") as f:
+                json.dump({"current_log": str(log_filepath)}, f)
+        except Exception as e:
+            print(f"[WARNING] Could not write log state: {e}")
+
+    mode = "a" if resume and log_filepath.exists() else "w"
+    log_file = open(log_filepath, mode, encoding="utf-8")
+
+    if mode == "a":
+        log_file.write(f"\n{'=' * 80}\n")
+        log_file.write(f"  [RESUME] Appending to log at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write(f"{'=' * 80}\n\n")
+        log_file.flush()
+
+    stdout_tee = TeeStream(sys.__stdout__, log_file)
+    stderr_tee = TeeStream(sys.__stderr__, log_file)
+    sys.stdout = stdout_tee
+    sys.stderr = stderr_tee
+
+    # Ensure buffered content is flushed when the program exits
+    atexit.register(stdout_tee.close)
+    atexit.register(stderr_tee.close)
+
+    action = "Resuming log" if mode == "a" else "Logging to"
+    print(f"[LOG] {action} {log_filepath}")
+    return log_filepath
 
 
 def set_seed(seed: int = 42) -> None:
@@ -19,8 +166,8 @@ def set_seed(seed: int = 42) -> None:
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
 
 
 def read_dicom(path: str | Path) -> np.ndarray:

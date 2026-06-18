@@ -10,9 +10,10 @@ import torch
 import torch.nn.functional as F
 
 from src.config import Config, load_config
+from src.lung_segmentation import LungSegmenter
 from src.model import build_model
 from src.predict import predict_single
-from src.utils import grayscale_to_rgb, set_seed
+from src.utils import grayscale_to_rgb, set_seed, setup_logging
 
 
 class GradCAM:
@@ -29,7 +30,7 @@ class GradCAM:
             # Use the last encoder block
             encoder = model.encoder
             layer_names = [name for name, _ in encoder.named_children()]
-            target_layer = layer_names[-1] if layer_names else None
+            target_layer = f"encoder.{layer_names[-1]}" if layer_names else None
 
         self.target_layer = target_layer
         self._register_hooks()
@@ -152,8 +153,11 @@ def generate_gradcam(
     checkpoint = torch.load(config.inference.model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
 
+    # Load lung segmenter for auto lung masking
+    lung_segmenter = LungSegmenter(device=device)
+
     # Predict
-    prob, original_image = predict_single(model, image_path, config, device)
+    prob, original_image = predict_single(model, image_path, config, device, lung_segmenter=lung_segmenter)
 
     # Generate Grad-CAM
     gradcam = GradCAM(model, target_layer=config.explainability.target_layer)
@@ -164,6 +168,8 @@ def generate_gradcam(
     image_path = Path(image_path)
     if image_path.suffix.lower() in [".dcm", ".dicom"]:
         image = read_dicom(image_path)
+        if config.preprocessing.normalize and not config.preprocessing.apply_lung_window:
+            image = image / 255.0
     else:
         image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
         if image is None:
@@ -211,4 +217,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = load_config(args.config)
+    setup_logging(logs_dir=config.output.logs_dir, run_name="gradcam")
     generate_gradcam(config, args.input, Path(args.output))

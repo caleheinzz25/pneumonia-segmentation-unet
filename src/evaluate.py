@@ -16,7 +16,7 @@ from src.dataset import RSNADataset, get_train_val_split
 from src.metrics import SegmentationMetrics
 from src.model import build_model
 from src.transforms import get_validation_transforms
-from src.utils import overlay_mask, set_seed
+from src.utils import overlay_mask, set_seed, setup_logging
 
 
 @torch.no_grad()
@@ -84,7 +84,7 @@ def evaluate(config: Config) -> dict[str, float]:
         probs = torch.sigmoid(logits).cpu().numpy()
 
         for i in range(probs.shape[0]):
-            metrics.update(probs[i, 0], masks[i, 0])
+            sample_metrics = metrics.update(probs[i, 0], masks[i, 0])
 
             # Only store samples needed for visualization
             if sample_idx in viz_indices:
@@ -93,6 +93,7 @@ def evaluate(config: Config) -> dict[str, float]:
                     "prob": probs[i, 0],
                     "mask": masks[i, 0],
                     "patient_id": patient_ids[i],
+                    "dice": sample_metrics["dice"]
                 })
             sample_idx += 1
 
@@ -147,7 +148,7 @@ def evaluate(config: Config) -> dict[str, float]:
             axes[idx, 1].axis("off")
 
             axes[idx, 2].imshow(overlay)
-            axes[idx, 2].set_title(f"Prediction (Dice: {results['dice']:.3f})")
+            axes[idx, 2].set_title(f"Prediction (Dice: {sample['dice']:.3f})")
             axes[idx, 2].axis("off")
 
         plt.tight_layout()
@@ -165,4 +166,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = load_config(args.config)
+    setup_logging(logs_dir=config.output.logs_dir, run_name="evaluate")
     evaluate(config)

@@ -171,6 +171,9 @@ class RSNADataset(Dataset):
         target_w, target_h = self.prep_config.image_size[1], self.prep_config.image_size[0]
         image, mask = resize_image_mask(image, mask, (target_w, target_h))
 
+        if self.prep_config.normalize and not self.prep_config.apply_lung_window:
+            image = image / 255.0
+
         # Try to load precomputed pneumonia mask (overrides bbox mask)
         precomputed_mask = self._load_precomputed_mask(patient_id, target_h, target_w)
         if precomputed_mask is not None:
@@ -198,10 +201,11 @@ class RSNADataset(Dataset):
             mask = torch.from_numpy(mask).unsqueeze(0).float()
 
         # Ensure mask is float tensor with shape (1, H, W)
-        if isinstance(mask, torch.Tensor):
-            if mask.dim() == 2:
-                mask = mask.unsqueeze(0)
-            mask = mask.float()
+        if not isinstance(mask, torch.Tensor):
+            mask = torch.from_numpy(mask)
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(0)
+        mask = mask.float()
 
         return {
             "image": image,

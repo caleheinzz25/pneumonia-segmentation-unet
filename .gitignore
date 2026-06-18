@@ -1,2 +1,29 @@
-.venv
-data
+# Virtual Environments
+.venv/
+venv/
+env/
+.env
+
+# Data and Outputs
+data/
+outputs/
+logs/
+checkpoints/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db

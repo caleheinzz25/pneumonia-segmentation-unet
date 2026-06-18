@@ -15,8 +15,7 @@ def get_training_transforms(
     prep_config: PreprocessingConfig,
 ) -> A.Compose:
     """Get training augmentation pipeline."""
-    h, w = prep_config.image_size
-    transforms = [A.Resize(height=h, width=w, interpolation=1)]
+    transforms = []
 
     if aug_config.enabled:
         transforms.extend([
@@ -38,6 +37,16 @@ def get_training_transforms(
                 contrast_limit=aug_config.contrast_limit,
                 p=aug_config.brightness_contrast_prob,
             ),
+            # Medical-specific augmentations
+            A.CLAHE(clip_limit=2.0, p=0.3),
+            A.GaussNoise(std_range=(0.01, 0.05), p=0.2),
+            A.CoarseDropout(
+                num_holes_range=(1, 4),
+                hole_height_range=(20, 60),
+                hole_width_range=(20, 60),
+                fill="random",
+                p=0.2,
+            ),
         ])
 
     transforms.append(
@@ -50,9 +59,7 @@ def get_training_transforms(
 
 def get_validation_transforms(prep_config: PreprocessingConfig) -> A.Compose:
     """Get validation/test preprocessing pipeline (no augmentation)."""
-    h, w = prep_config.image_size
     return A.Compose([
-        A.Resize(height=h, width=w, interpolation=1),
         A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD, max_pixel_value=1.0),
         ToTensorV2(),
     ])

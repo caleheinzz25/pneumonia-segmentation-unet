@@ -16,6 +16,7 @@ class DataConfig:
     class_info_csv: str
     mask_dir: Optional[str] = None
     lung_mask_dir: Optional[str] = None
+    test_lung_mask_dir: Optional[str] = None
     rle_csv: Optional[str] = None
 
 

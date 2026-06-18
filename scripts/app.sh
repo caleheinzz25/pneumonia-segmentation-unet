@@ -4,5 +4,5 @@
 set -e
 
 echo "Starting web app..."
-python -m app.gradio_app
+uv run python -m app.gradio_app
 echo "App stopped."
