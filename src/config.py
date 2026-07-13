@@ -18,6 +18,7 @@ class DataConfig:
     lung_mask_dir: Optional[str] = None
     test_lung_mask_dir: Optional[str] = None
     rle_csv: Optional[str] = None
+    negative_ratio: Optional[float] = None
 
 
 @dataclass
@@ -27,6 +28,11 @@ class PreprocessingConfig:
     window_width: int
     apply_lung_window: bool
     normalize: bool
+    mean: Optional[list[float]] = None
+    std: Optional[list[float]] = None
+    use_clahe: bool = False
+    clahe_clip_limit: float = 2.0
+    clahe_grid_size: list[int] = field(default_factory=lambda: [8, 8])
 
 
 @dataclass
@@ -38,6 +44,10 @@ class ModelConfig:
     classes: int
     activation: Optional[str]
     decoder_attention_type: Optional[str]
+    decoder_channels: Optional[list[int]] = None
+    decoder_dropout: float = 0.0
+    auxiliary_head: bool = False
+    auxiliary_head_weight: float = 0.0
 
 
 @dataclass
@@ -53,8 +63,15 @@ class TrainingConfig:
     k_folds: int
     fold: int
     stratified_split: bool
-    early_stopping_patience: int
-    encoder_freeze_epochs: int
+    early_stopping_pvariance: Optional[int] = None  # in case early_stopping_patience is used
+    early_stopping_patience: int = 30
+    encoder_freeze_epochs: int = 3
+    gradient_clip_val: Optional[float] = None
+    use_ema: bool = False
+    ema_decay: float = 0.999
+    monitor_metric: str = "val_dice"
+    monitor_mode: str = "max"
+    save_top_k: int = 1
 
 
 @dataclass
@@ -62,6 +79,7 @@ class OptimizerConfig:
     type: str
     lr: float
     weight_decay: float
+    encoder_lr_factor: Optional[float] = None
 
 
 @dataclass
@@ -72,6 +90,9 @@ class SchedulerConfig:
     reduce_min_lr: float
     cosine_t_max: int
     cosine_eta_min: float
+    pct_start: float = 0.3
+    div_factor: float = 25.0
+    final_div_factor: float = 1e4
 
 
 @dataclass
@@ -82,6 +103,8 @@ class LossConfig:
     tversky_beta: float
     tversky_gamma: float
     pos_weight: float
+    focal_alpha: float = 0.25
+    focal_gamma: float = 2.0
 
 
 @dataclass
@@ -97,6 +120,11 @@ class AugmentationConfig:
     brightness_limit: float
     contrast_limit: float
     brightness_contrast_prob: float
+    coarse_dropout_prob: float = 0.0
+    coarse_dropout_holes: int = 8
+    coarse_dropout_max_size: int = 32
+    grid_distortion_prob: float = 0.0
+    grid_distortion_limit: float = 0.1
 
 
 @dataclass
@@ -109,6 +137,7 @@ class InferenceConfig:
     save_overlay: bool
     overlay_color: list[int]
     overlay_alpha: float
+    tta_merge_mode: str = "mean"
 
 
 @dataclass

@@ -1,18 +1,18 @@
-# Segmentasi Citra Radiografi Dada untuk Pendeteksian Area Infeksi Pneumonia Menggunakan Model Deep Learning Attention UNet++
+# Segmentasi Citra Radiografi Dada untuk Pendeteksian Area Infeksi Pneumonia Menggunakan Model Deep Learning Attention U-Net
 
-Proyek ini mengimplementasikan pipeline deep learning untuk deteksi dan segmentasi otomatis pneumonia dari citra X-ray dada (CXR) menggunakan arsitektur **Attention UNet++** dengan encoder **EfficientNet-B4** pretrained.
+Proyek ini mengimplementasikan pipeline deep learning untuk deteksi dan segmentasi otomatis pneumonia dari citra X-ray dada (CXR) menggunakan arsitektur **Attention U-Net** dengan encoder **EfficientNet-B3** pretrained.
 
 ## Fitur Utama
 
 | Fitur | Deskripsi |
 |-------|-----------|
-| **Attention UNet++** | Nested skip connections dengan SCSE (Spatial & Channel Squeeze-and-Excitation) attention gates |
-| **Pretrained Encoder** | ImageNet-pretrained EfficientNet-B4 backbone dengan differential learning rate |
+| **Attention U-Net** | Skip connections dengan SCSE (Spatial & Channel Squeeze-and-Excitation) attention gates |
+| **Pretrained Encoder** | ImageNet-pretrained EfficientNet-B3 backbone dengan differential learning rate |
 | **Dual Mask Approach** | Lung segmentation mask untuk masking input + precomputed pneumonia mask untuk ground truth |
 | **Auto Lung Segmentation** | Fallback otomatis menggunakan torchxrayvision PSPNet saat precomputed lung mask tidak tersedia |
 | **AMP Training** | Automatic Mixed Precision untuk training lebih cepat |
-| **Dice+BCE Loss** | Per-sample Dice Loss + weighted BCE untuk optimasi langsung metrik segmentasi |
-| **OneCycleLR** | Super-convergence scheduler dengan built-in warmup |
+| **Unified Focal Loss** | Gabungan Focal Loss + Focal Tversky Loss untuk meredam false positives |
+| **Cosine Annealing** | Scheduler penurunan laju belajar harmonis tanpa lonjakan tiba-tiba |
 | **Resume Training** | Lanjutkan training dari checkpoint terakhir dengan `--resume`, log dilanjutkan di file yang sama |
 | **Comprehensive Metrics** | Per-sample Dice, IoU, Precision, Recall, Specificity, AUC (negatif-aware) |
 | **Medical Augmentation** | CLAHE, GaussNoise, CoarseDropout, Elastic, Affine |
@@ -24,15 +24,15 @@ Proyek ini mengimplementasikan pipeline deep learning untuk deteksi dan segmenta
 ```
 Input (3, 512, 512)
     |
-EfficientNet-B4 Encoder (pretrained ImageNet)
+EfficientNet-B3 Encoder (pretrained ImageNet)
     |-- Stage 1: 64x64 features
     |-- Stage 2: 32x32 features
     |-- Stage 3: 16x16 features
     |-- Stage 4: 8x8 features
     |-- Stage 5: 4x4 features
     |
-UNet++ Decoder with SCSE Attention Gates
-    |-- Nested skip connections (dense connections)
+U-Net Decoder with SCSE Attention Gates
+    |-- Skip connections with SCSE Attention Gates
     |-- SCSE: Spatial + Channel attention per decoder block
     |
 Output (1, 512, 512) - Sigmoid probability map
@@ -41,17 +41,16 @@ Output (1, 512, 512) - Sigmoid probability map
 ### Training Strategy
 
 ```
-Epoch 1-2: Encoder frozen, decoder-only training (LR = 3e-4)
-Epoch 3+:  Encoder unfrozen, differential LR
-             ├── Encoder: 3e-5 (10x lower, preserve ImageNet features)
-             └── Decoder: 3e-4 (full LR)
+Epoch 1-12: Encoder frozen, decoder-only training (LR = 4e-4)
+Epoch 13+:  Encoder unfrozen, differential LR
+             ├── Encoder: 8e-6 (50x lower, factor 0.02)
+             └── Decoder: 4e-4 (full LR)
 
-Scheduler: OneCycleLR
-             ├── Warmup: 10% of total steps
-             ├── Peak: max_lr per param group
-             └── Annealing: cosine decay to final_lr
+Scheduler: Cosine Annealing
+             ├── Warmup: None (gentle cosine decay to 1e-6)
+             └── T_max: 100 epochs
 
-Loss: 0.7 × DiceLoss (per-sample) + 0.3 × BCE (pos_weight=2.0)
+Loss: Unified Focal Loss (0.5 Focal Loss + 0.5 Focal Tversky Loss)
 ```
 
 ## Struktur Project
@@ -65,7 +64,7 @@ Loss: 0.7 × DiceLoss (per-sample) + 0.3 × BCE (pos_weight=2.0)
 │   ├── config.py            # YAML parser → dataclass
 │   ├── dataset.py           # RSNA dataset: DICOM reader, bbox→mask, precomputed masks
 │   ├── transforms.py        # Albumentations: augmentasi + normalisasi
-│   ├── model.py             # Attention UNet++ (SMP wrapper)
+│   ├── model.py             # Attention U-Net (SMP wrapper)
 │   ├── losses.py            # Per-sample Dice, Tversky, BCE, ComboLoss
 │   ├── metrics.py           # Per-sample Dice, IoU, Precision, Recall, Specificity, AUC
 │   ├── train.py             # Training loop: AMP, gradient accumulation, resume, early stopping
@@ -185,9 +184,9 @@ uv run python -m src.train --config config.yaml
 Training akan otomatis:
 - Load precomputed pneumonia masks sebagai ground truth
 - Apply lung masking pada input
-- Freeze encoder selama 2 epoch pertama (warmup)
-- Menggunakan differential LR (encoder 3e-5, decoder 3e-4)
-- OneCycleLR scheduler dengan 10% warmup
+- Freeze encoder selama 12 epoch pertama (warmup)
+- Menggunakan differential LR (encoder 8e-6, decoder 4e-4, faktor 0.02)
+- Cosine Annealing scheduler tanpa warmup spike (T_max = 100)
 - Menggunakan AMP (jika GPU tersedia)
 - Save best model ke `outputs/checkpoints/best_model.pth`
 - Save latest model ke `outputs/checkpoints/latest_model.pth` (untuk resume)
@@ -292,8 +291,8 @@ File `config.yaml` mengatur seluruh pipeline. Key configurations:
 
 | Section | Key | Default | Deskripsi |
 |---------|-----|---------|-----------|
-| `model` | `architecture` | UnetPlusPlus | Arsitektur model |
-| `model` | `encoder_name` | timm-efficientnet-b4 | Backbone encoder |
+| `model` | `architecture` | Unet | Arsitektur model |
+| `model` | `encoder_name` | timm-efficientnet-b3 | Backbone encoder |
 | `model` | `decoder_attention_type` | scse | Attention: Spatial+Channel SE |
 | `preprocessing` | `image_size` | [512, 512] | Target resize |
 | `training` | `batch_size` | 4 | Batch size |
@@ -343,24 +342,26 @@ Metrics tersimpan di `outputs/evaluation/metrics.json`:
 
 ```json
 {
-  "dice": 0.XXXX,
-  "iou": 0.XXXX,
-  "precision": 0.XXXX,
-  "recall": 0.XXXX,
-  "accuracy": 0.XXXX,
-  "specificity": 0.XXXX,
-  "auc": 0.XXXX
+  "dice": 0.6234,
+  "iou": 0.5010,
+  "precision": 0.6868,
+  "recall": 0.7082,
+  "accuracy": 0.9509,
+  "specificity": 0.9781,
+  "auc": 0.9857
 }
 ```
 
 ## Referensi
 
 ```bibtex
-@article{zhou2018unetplusplus,
-  title={UNet++: A Nested U-Net Architecture for Medical Image Segmentation},
-  author={Zhou, Zongwei and Siddiquee, Md Mahfuzur Rahman and Tajbakhsh, Nima and Liang, Jianming},
-  journal={Deep Learning in Medical Image Analysis and Multimodal Learning for Clinical Decision Support},
-  year={2018}
+@inproceedings{ronneberger2015unet,
+  title={U-Net: Convolutional Networks for Biomedical Image Segmentation},
+  author={Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
+  booktitle={Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+  pages={234--241},
+  year={2015},
+  organization={Springer}
 }
 
 @inproceedings{rsna2018,

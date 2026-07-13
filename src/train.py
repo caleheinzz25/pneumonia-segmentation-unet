@@ -60,6 +60,8 @@ def log_sample_predictions(
             masks = batch["mask"]
 
             logits = model(images)
+            if isinstance(logits, list):
+                logits = logits[-1]
             probs = torch.sigmoid(logits).cpu()
 
             for i in range(images.shape[0]):
@@ -109,8 +111,9 @@ def build_optimizer(model: nn.Module, config: Config):
 
     # Include both param groups regardless of requires_grad, so optimizer tracks them.
     param_groups = []
+    encoder_factor = config.optimizer.encoder_lr_factor if config.optimizer.encoder_lr_factor is not None else 0.1
     if encoder_params:
-        param_groups.append({"params": encoder_params, "lr": config.optimizer.lr * 0.1})
+        param_groups.append({"params": encoder_params, "lr": config.optimizer.lr * encoder_factor})
     if decoder_params:
         param_groups.append({"params": decoder_params, "lr": config.optimizer.lr})
 
@@ -140,7 +143,8 @@ def build_scheduler(optimizer, config: Config, steps_per_epoch: int = 1):
     elif config.scheduler.type == "one_cycle":
         # steps_per_epoch = actual optimizer steps, not batch count
         # With grad accumulation, optimizer steps = ceil(num_batches / accum_steps)
-        max_lrs = [config.optimizer.lr * 0.1, config.optimizer.lr]
+        encoder_factor = config.optimizer.encoder_lr_factor if config.optimizer.encoder_lr_factor is not None else 0.1
+        max_lrs = [config.optimizer.lr * encoder_factor, config.optimizer.lr]
         # If only one param group (e.g. encoder frozen), use single max_lr
         if len(optimizer.param_groups) == 1:
             max_lrs = [optimizer.param_groups[0]["lr"]]
@@ -149,10 +153,10 @@ def build_scheduler(optimizer, config: Config, steps_per_epoch: int = 1):
             max_lr=max_lrs,
             epochs=config.training.epochs,
             steps_per_epoch=steps_per_epoch,
-            pct_start=0.1,  # 10% warmup
+            pct_start=float(config.scheduler.pct_start),
             anneal_strategy="cos",
-            div_factor=10.0,  # initial_lr = max_lr / 10
-            final_div_factor=100.0,  # final_lr = initial_lr / 100
+            div_factor=float(config.scheduler.div_factor),
+            final_div_factor=float(config.scheduler.final_div_factor),
         )
     elif config.scheduler.type == "reduce_on_plateau":
         return ReduceLROnPlateau(
@@ -161,30 +165,35 @@ def build_scheduler(optimizer, config: Config, steps_per_epoch: int = 1):
             factor=config.scheduler.reduce_factor,
             patience=config.scheduler.reduce_patience,
             min_lr=config.scheduler.reduce_min_lr,
-            verbose=True,
         )
     else:
         return None
 
 
-def _batch_metrics(logits: torch.Tensor, targets: torch.Tensor, threshold: float = 0.5) -> tuple[float, int, int]:
-    """Compute per-sample dice score (excluding true negatives), pred/target positive pixel counts."""
+def _batch_metrics(logits, targets: torch.Tensor, threshold: float = 0.5) -> tuple[float, int, int]:
+    """Compute per-sample dice score, pred/target positive pixel counts.
+
+    Handles both single tensor and list (deep supervision) logits.
+    """
+    # For deep supervision (list output), use the final (highest-res) output for metrics
+    if isinstance(logits, list):
+        logits = logits[-1]
+
     probs = torch.sigmoid(logits)
     preds = (probs > threshold).float()
     batch_size = logits.shape[0]
     total_pred_pos = int(preds.sum().item())
     total_target_pos = int(targets.sum().item())
 
-    # Per-sample dice, skipping true negatives (both pred and target all-zero)
     dice_scores = []
     for i in range(batch_size):
         p = preds[i].view(-1)
         t = targets[i].view(-1)
         p_sum = p.sum()
         t_sum = t.sum()
-        # True-negative samples get a perfect dice score of 1.0
-        if p_sum == 0 and t_sum == 0:
-            dice_scores.append(1.0)
+        if t_sum == 0:
+            dice = 1.0 if p_sum == 0 else 0.0
+            dice_scores.append(float(dice))
             continue
         intersection = (p * t).sum()
         dice = (2.0 * intersection + 1e-6) / (p_sum + t_sum + 1e-6)
@@ -232,6 +241,9 @@ def train_one_epoch(
         scaler.scale(loss).backward()
 
         if (batch_idx + 1) % accumulation_steps == 0 or (batch_idx + 1) == num_batches:
+            # Unscale before clipping so clip operates on true gradient magnitudes
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
@@ -273,6 +285,7 @@ def validate(
     device: str,
     epoch: int,
     writer: SummaryWriter | None,
+    threshold: float = 0.5,
 ) -> tuple[float, dict[str, float]]:
     """Run validation and compute metrics."""
     model.eval()
@@ -293,11 +306,13 @@ def validate(
         loss = criterion(logits, masks)
         total_loss += loss.item()
 
-        probs = torch.sigmoid(logits).cpu().numpy()
+        # For deep supervision, use final output for metric computation
+        eval_logits = logits[-1] if isinstance(logits, list) else logits
+        probs = torch.sigmoid(eval_logits).cpu().numpy()
         targets = masks.cpu().numpy()
 
         for i in range(probs.shape[0]):
-            metrics.update(probs[i, 0], targets[i, 0])
+            metrics.update(probs[i, 0], targets[i, 0], threshold=threshold)
 
         current_results = metrics.compute()
         pbar.set_postfix_str(
@@ -356,7 +371,7 @@ def train(config: Config, resume_path: str | None = None) -> None:
     """Main training function."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"{'=' * 80}")
-    print(f"  PNEUMONIA SEGMENTATION - ATTENTION UNET++ TRAINING")
+    print(f"  PNEUMONIA SEGMENTATION - ATTENTION {config.model.architecture.upper()} TRAINING")
     print(f"{'=' * 80}")
     print(f"  Device     : {device}")
     if device == "cuda":
@@ -426,7 +441,7 @@ def train(config: Config, resume_path: str | None = None) -> None:
     # Model
     model = build_model(config.model, device=device)
 
-    # Loss function (independent of optimizer)
+    # Loss function
     criterion = ComboLoss(
         loss_type=config.loss.type,
         bce_weight=config.loss.bce_weight,
@@ -434,7 +449,11 @@ def train(config: Config, resume_path: str | None = None) -> None:
         tversky_beta=config.loss.tversky_beta,
         tversky_gamma=config.loss.tversky_gamma,
         pos_weight=config.loss.pos_weight,
+        focal_alpha=config.loss.focal_alpha,
+        focal_gamma=config.loss.focal_gamma,
     )
+
+    print()
 
     # Logging
     best_dice = 0.0
@@ -449,7 +468,25 @@ def train(config: Config, resume_path: str | None = None) -> None:
         if checkpoint_file.exists():
             print(f"  [RESUME] Loading checkpoint: {checkpoint_file}")
             checkpoint = torch.load(checkpoint_file, map_location=device, weights_only=False)
-            model.load_state_dict(checkpoint["model_state_dict"])
+            ckpt_state = checkpoint["model_state_dict"]
+
+            # Try strict load first, fall back to non-strict (handles architecture
+            # changes like adding deep-supervision heads to an existing model).
+            try:
+                model.load_state_dict(ckpt_state, strict=True)
+            except RuntimeError:
+                missing, unexpected = model.load_state_dict(ckpt_state, strict=False)
+                if missing:
+                    print(f"  [RESUME] Missing keys (will be randomly init): {len(missing)} keys")
+                    for k in missing[:5]:
+                        print(f"           - {k}")
+                    if len(missing) > 5:
+                        print(f"           ... and {len(missing) - 5} more")
+                if unexpected:
+                    print(f"  [RESUME] Unexpected keys (ignored): {len(unexpected)} keys")
+                    for k in unexpected[:3]:
+                        print(f"             - {k}")
+
             start_epoch = checkpoint["epoch"] + 1
             best_dice = checkpoint.get("best_dice", 0.0)
             epochs_no_improve = checkpoint.get("epochs_no_improve", 0)
@@ -519,11 +556,23 @@ def train(config: Config, resume_path: str | None = None) -> None:
             config.training.accumulation_steps, epoch, writer,
             scheduler=scheduler, scheduler_type=config.scheduler.type,
         )
-        val_loss, val_metrics = validate(model, val_loader, criterion, device, epoch, writer)
+        val_loss, val_metrics = validate(
+            model, val_loader, criterion, device, epoch, writer,
+            threshold=config.inference.threshold,
+        )
 
         val_dice = val_metrics["dice"]
         elapsed = time.time() - start_time
         current_lr = get_lr(optimizer)
+
+        # Update epochs_no_improve BEFORE printing summary so the displayed
+        # counter reflects the current epoch's result, not the previous one.
+        is_best = val_dice > best_dice
+        if is_best:
+            best_dice = val_dice
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
 
         # Print detailed epoch summary
         print_epoch_summary(
@@ -544,9 +593,7 @@ def train(config: Config, resume_path: str | None = None) -> None:
                 scheduler.step()
 
         # Checkpoint best model
-        if val_dice > best_dice:
-            best_dice = val_dice
-            epochs_no_improve = 0
+        if is_best:
             checkpoint_path = Path(config.output.checkpoints_dir) / "best_model.pth"
             torch.save({
                 "epoch": epoch,
@@ -560,7 +607,6 @@ def train(config: Config, resume_path: str | None = None) -> None:
             }, checkpoint_path)
             print(f"  [CHECKPOINT] Best model saved! (Dice: {best_dice:.6f})")
         else:
-            epochs_no_improve += 1
             print(f"  [INFO] No improvement ({epochs_no_improve}/{config.training.early_stopping_patience})")
 
         # Early stopping

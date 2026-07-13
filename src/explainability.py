@@ -13,7 +13,14 @@ from src.config import Config, load_config
 from src.lung_segmentation import LungSegmenter
 from src.model import build_model
 from src.predict import predict_single
-from src.utils import grayscale_to_rgb, set_seed, setup_logging
+from src.transforms import IMAGENET_MEAN, IMAGENET_STD
+from src.utils import (
+    apply_window,
+    grayscale_to_rgb,
+    read_dicom,
+    set_seed,
+    setup_logging,
+)
 
 
 class GradCAM:
@@ -29,8 +36,29 @@ class GradCAM:
         if target_layer is None:
             # Use the last encoder block
             encoder = model.encoder
-            layer_names = [name for name, _ in encoder.named_children()]
-            target_layer = f"encoder.{layer_names[-1]}" if layer_names else None
+            # Find the path of model.encoder inside the model hierarchy dynamically
+            encoder_name = None
+            for name, module in model.named_modules():
+                if module is encoder:
+                    encoder_name = name
+                    break
+            if encoder_name is None:
+                encoder_name = "encoder"
+            
+            # If it has "blocks" (typical for timm encoders like EfficientNet)
+            if hasattr(encoder, "blocks"):
+                num_blocks = len(encoder.blocks)
+                target_layer = f"{encoder_name}.blocks.{num_blocks - 1}"
+            else:
+                layer_names = [name for name, _ in encoder.named_children()]
+                # Exclude pooling and classification heads if present
+                valid_layers = [l for l in layer_names if l not in ["global_pool", "head", "fc", "bn2", "conv_head"]]
+                if valid_layers:
+                    target_layer = f"{encoder_name}.{valid_layers[-1]}"
+                elif layer_names:
+                    target_layer = f"{encoder_name}.{layer_names[-1]}"
+                else:
+                    target_layer = None
 
         self.target_layer = target_layer
         self._register_hooks()
@@ -71,6 +99,10 @@ class GradCAM:
         # Forward pass
         output = self.model(input_tensor)
 
+        # Handle deep supervision list outputs by using the final scale
+        if isinstance(output, list):
+            output = output[-1]
+
         # Backward on output (sum of positive predictions)
         score = output.sum()
         self.model.zero_grad()
@@ -108,7 +140,13 @@ def apply_colormap(heatmap: np.ndarray, colormap: str = "jet") -> np.ndarray:
     Returns:
         Colored heatmap as RGB image (H, W, 3) in [0, 255]
     """
-    cmap = cm.colormaps[colormap]
+    import matplotlib as mpl
+    if hasattr(mpl, "colormaps"):
+        cmap = mpl.colormaps[colormap]
+    elif hasattr(cm, "colormaps"):
+        cmap = cm.colormaps[colormap]
+    else:
+        cmap = cm.get_cmap(colormap)
     colored = cmap(heatmap)[:, :, :3]  # Drop alpha channel
     return (colored * 255).astype(np.uint8)
 
@@ -156,15 +194,10 @@ def generate_gradcam(
     # Load lung segmenter for auto lung masking
     lung_segmenter = LungSegmenter(device=device)
 
-    # Predict
-    prob, original_image = predict_single(model, image_path, config, device, lung_segmenter=lung_segmenter)
-
-    # Generate Grad-CAM
-    gradcam = GradCAM(model, target_layer=config.explainability.target_layer)
-
-    # Need to re-preprocess for Grad-CAM
-    from src.utils import apply_window, grayscale_to_rgb, read_dicom, resize_image_mask
-
+    # Load and preprocess the image for Grad-CAM
+    # Must match the preprocessing that predict_single applies (lung window, resize,
+    # lung masking, grayscale→RGB, ImageNet normalization) so Grad-CAM reflects the
+    # same input the model actually sees.
     image_path = Path(image_path)
     if image_path.suffix.lower() in [".dcm", ".dicom"]:
         image = read_dicom(image_path)
@@ -177,17 +210,51 @@ def generate_gradcam(
         image = image.astype(np.float32) / 255.0
 
     if config.preprocessing.apply_lung_window:
-        image = apply_window(image, config.preprocessing.window_level, config.preprocessing.window_width)
+        image = apply_window(
+            image,
+            window_level=config.preprocessing.window_level,
+            window_width=config.preprocessing.window_width,
+        )
 
     target_w, target_h = config.preprocessing.image_size[1], config.preprocessing.image_size[0]
     image_resized, _ = resize_image_mask(image, None, (target_w, target_h))
+
+    # Apply lung mask (fallback cascade matching predict_single)
+    lung_mask = None
+    lung_mask_applied = False
+    lung_mask_dirs = [config.data.test_lung_mask_dir, config.data.lung_mask_dir]
+    patient_id = image_path.stem
+    for mask_dir in lung_mask_dirs:
+        if mask_dir is None:
+            continue
+        mask_path = Path(mask_dir) / f"{patient_id}.png"
+        if mask_path.exists():
+            lung_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            if lung_mask is not None:
+                from src.lung_segmentation import _postprocess_lung_mask
+                lung_mask = _postprocess_lung_mask(lung_mask)
+                lung_mask = (lung_mask > 127).astype(np.float32)
+                lung_mask = cv2.resize(lung_mask, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
+                image_resized = image_resized * lung_mask
+                lung_mask_applied = True
+            break
+
+    if not lung_mask_applied and lung_segmenter is not None:
+        lung_mask = lung_segmenter.segment(image_resized, target_h=target_h, target_w=target_w)
+        image_resized = image_resized * lung_mask
+
     image_rgb = grayscale_to_rgb(image_resized)
 
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
+    mean = np.array(IMAGENET_MEAN)
+    std = np.array(IMAGENET_STD)
     image_norm = (image_rgb - mean) / std
     input_tensor = torch.from_numpy(image_norm.transpose(2, 0, 1)).unsqueeze(0).float()
 
+    # Predict for overlay comparison
+    prob, original_image, _ = predict_single(model, image_path, config, device, lung_segmenter=lung_segmenter)
+
+    # Generate Grad-CAM
+    gradcam = GradCAM(model, target_layer=config.explainability.target_layer)
     heatmap = gradcam.generate(input_tensor)
 
     # Resize heatmap to original size

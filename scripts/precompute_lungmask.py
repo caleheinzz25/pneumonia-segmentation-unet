@@ -100,7 +100,9 @@ def load_image(image_path: Path) -> np.ndarray:
 
 def save_mask(mask: np.ndarray, output_path: str):
     """Save a binary mask as a PNG file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    parent = os.path.dirname(output_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     img = Image.fromarray(mask, mode="L")
     img.save(output_path)
 

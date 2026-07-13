@@ -19,8 +19,8 @@ def dice_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> fl
     pred = pred.flatten()
     target = target.flatten()
 
-    if target.sum() == 0 and pred.sum() == 0:
-        return 1.0
+    if target.sum() == 0:
+        return 1.0 if pred.sum() == 0 else 0.0
 
     intersection = (pred * target).sum()
     return float((2.0 * intersection + smooth) / (pred.sum() + target.sum() + smooth))
@@ -40,8 +40,8 @@ def iou_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> flo
     pred = pred.flatten()
     target = target.flatten()
 
-    if target.sum() == 0 and pred.sum() == 0:
-        return 1.0
+    if target.sum() == 0:
+        return 1.0 if pred.sum() == 0 else 0.0
 
     intersection = (pred * target).sum()
     union = pred.sum() + target.sum() - intersection

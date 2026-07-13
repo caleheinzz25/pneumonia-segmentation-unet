@@ -27,3 +27,20 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+wa_chat.txt
+
+# Gradio cache
+.gradio/
+
+# Scratch & build files
+scratch/
+out/
+
+# Local configs
+cloudflared_config.json
+.agents/
+
+# Documentation & IDE states
+doc/
+.claude/

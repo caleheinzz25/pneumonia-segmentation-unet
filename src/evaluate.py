@@ -1,4 +1,4 @@
-"""Evaluation script: compute metrics and generate visualizations."""
+"""Evaluation script: compute metrics and generate visualizations with TTA support."""
 
 import argparse
 import json
@@ -8,6 +8,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -17,6 +18,54 @@ from src.metrics import SegmentationMetrics
 from src.model import build_model
 from src.transforms import get_validation_transforms
 from src.utils import overlay_mask, set_seed, setup_logging
+
+
+@torch.no_grad()
+def predict_with_tta(
+    model: torch.nn.Module,
+    images: torch.Tensor,
+    tta_transforms: list[str] | None = None,
+) -> np.ndarray:
+    """Predict with test-time augmentation.
+
+    Applies specified transforms, averages predictions for more robust results.
+
+    Args:
+        model: Trained model
+        images: Input batch (B, C, H, W) on device
+        tta_transforms: List of TTA transform names. Supported: "hflip"
+
+    Returns:
+        Probability maps as numpy array (B, H, W)
+    """
+    if not tta_transforms:
+        logits = model(images)
+        if isinstance(logits, list):
+            logits = logits[-1]
+        return torch.sigmoid(logits).cpu().numpy()
+
+    probs_list = []
+
+    # Original prediction
+    logits = model(images)
+    if isinstance(logits, list):
+        logits = logits[-1]
+    probs = torch.sigmoid(logits)
+    probs_list.append(probs)
+
+    for transform in tta_transforms:
+        if transform == "hflip":
+            flipped = torch.flip(images, dims=[-1])
+            logits_f = model(flipped)
+            if isinstance(logits_f, list):
+                logits_f = logits_f[-1]
+            probs_f = torch.sigmoid(logits_f)
+            probs_f = torch.flip(probs_f, dims=[-1])
+            probs_list.append(probs_f)
+
+    # Average all predictions
+    avg_probs = torch.stack(probs_list, dim=0).mean(dim=0)
+    return avg_probs.cpu().numpy()
 
 
 @torch.no_grad()
@@ -31,6 +80,12 @@ def evaluate(config: Config) -> dict[str, float]:
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     print(f"Loaded model from {config.inference.model_path}")
+
+    # TTA config
+    use_tta = config.inference.use_tta
+    tta_transforms = config.inference.tta_transforms if use_tta else None
+    if use_tta:
+        print(f"TTA enabled: {tta_transforms}")
 
     # Validation data
     _, val_ids = get_train_val_split(
@@ -80,20 +135,25 @@ def evaluate(config: Config) -> dict[str, float]:
         masks = batch["mask"].cpu().numpy()
         patient_ids = batch["patient_id"]
 
-        logits = model(images)
-        probs = torch.sigmoid(logits).cpu().numpy()
+        # Predict with TTA
+        probs = predict_with_tta(model, images, tta_transforms)
 
         for i in range(probs.shape[0]):
-            sample_metrics = metrics.update(probs[i, 0], masks[i, 0])
+            sample_metrics = metrics.update(probs[i, 0], masks[i, 0], threshold=config.inference.threshold)
 
             # Only store samples needed for visualization
             if sample_idx in viz_indices:
+                d_val = sample_metrics.get("dice")
+                if d_val is None:
+                    from src.metrics import dice_score
+                    pred_binary = (probs[i, 0] >= config.inference.threshold).astype(np.float32)
+                    d_val = dice_score(pred_binary, masks[i, 0])
                 viz_samples.append({
                     "image": images[i].cpu().numpy(),
                     "prob": probs[i, 0],
                     "mask": masks[i, 0],
                     "patient_id": patient_ids[i],
-                    "dice": sample_metrics["dice"]
+                    "dice": d_val
                 })
             sample_idx += 1
 
@@ -106,6 +166,14 @@ def evaluate(config: Config) -> dict[str, float]:
     with open(metrics_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"Metrics saved to {metrics_path}")
+
+    # Save per-class breakdown
+    per_class = _compute_per_class_metrics(val_loader, model, device, config, tta_transforms)
+    if per_class:
+        per_class_path = output_dir / "per_class_metrics.json"
+        with open(per_class_path, "w") as f:
+            json.dump(per_class, f, indent=2)
+        print(f"Per-class metrics saved to {per_class_path}")
 
     # Visualize random samples
     if viz_samples:
@@ -160,11 +228,74 @@ def evaluate(config: Config) -> dict[str, float]:
     return results
 
 
+@torch.no_grad()
+def _compute_per_class_metrics(
+    val_loader: DataLoader,
+    model: torch.nn.Module,
+    device: str,
+    config: Config,
+    tta_transforms: list[str] | None,
+) -> dict:
+    """Compute metrics separately for positive (pneumonia) and negative (normal) patients."""
+    from src.metrics import dice_score, iou_score
+
+    pos_dices = []
+    neg_dices = []
+    pos_ious = []
+    neg_ious = []
+
+    for batch in val_loader:
+        images = batch["image"].to(device, non_blocking=True)
+        masks = batch["mask"].cpu().numpy()
+        probs = predict_with_tta(model, images, tta_transforms)
+
+        for i in range(probs.shape[0]):
+            pred_binary = (probs[i, 0] >= config.inference.threshold).astype(np.float32)
+            mask = masks[i, 0]
+
+            if mask.sum() > 0:
+                pos_dices.append(dice_score(pred_binary, mask))
+                pos_ious.append(iou_score(pred_binary, mask))
+            else:
+                neg_dices.append(dice_score(pred_binary, mask))
+                neg_ious.append(iou_score(pred_binary, mask))
+
+    result = {}
+    if pos_dices:
+        result["positive"] = {
+            "count": len(pos_dices),
+            "dice": float(np.mean(pos_dices)),
+            "iou": float(np.mean(pos_ious)),
+        }
+    if neg_dices:
+        result["negative"] = {
+            "count": len(neg_dices),
+            "dice": float(np.mean(neg_dices)),
+            "iou": float(np.mean(neg_ious)),
+        }
+
+    return result
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Pneumonia Segmentation Model")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config file")
+    parser.add_argument(
+        "--tta", action="store_true", default=None,
+        help="Enable test-time augmentation (overrides config)"
+    )
+    parser.add_argument(
+        "--no-tta", action="store_true",
+        help="Disable test-time augmentation (overrides config)"
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
+
+    if args.tta:
+        config.inference.use_tta = True
+    elif args.no_tta:
+        config.inference.use_tta = False
+
     setup_logging(logs_dir=config.output.logs_dir, run_name="evaluate")
     evaluate(config)

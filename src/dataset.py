@@ -195,17 +195,14 @@ class RSNADataset(Dataset):
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
+            # Albumentations ToTensorV2 gives (H, W) mask — ensure (1, H, W) float
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0)
+            mask = mask.float()
         else:
-            # Manual normalization if no transform
+            # Manual normalization when no transform pipeline
             image = torch.from_numpy(image.transpose(2, 0, 1)).float()
             mask = torch.from_numpy(mask).unsqueeze(0).float()
-
-        # Ensure mask is float tensor with shape (1, H, W)
-        if not isinstance(mask, torch.Tensor):
-            mask = torch.from_numpy(mask)
-        if mask.dim() == 2:
-            mask = mask.unsqueeze(0)
-        mask = mask.float()
 
         return {
             "image": image,
@@ -229,6 +226,29 @@ def get_train_val_split(
 
     # Determine if patient has pneumonia (Target=1) or not
     patient_targets = labels_df.groupby("patientId")["Target"].max().reset_index()
+
+    if getattr(data_config, "negative_ratio", None) is not None:
+        pos_df = patient_targets[patient_targets["Target"] == 1]
+        neg_df = patient_targets[patient_targets["Target"] == 0]
+        
+        # Calculate how many negatives we need to achieve the target ratio
+        # negative_ratio = N / (N + P) => N = P * (negative_ratio / (1 - negative_ratio))
+        n_pos = len(pos_df)
+        ratio = data_config.negative_ratio
+        
+        if 0.0 <= ratio < 1.0:
+            if ratio == 0.0:
+                patient_targets = pos_df.sample(frac=1.0, random_state=seed).reset_index(drop=True)
+            else:
+                n_neg = int(n_pos * (ratio / (1.0 - ratio)))
+                
+                # Sample negatives if we need fewer than we have
+                if n_neg < len(neg_df):
+                    neg_df = neg_df.sample(n=n_neg, random_state=seed)
+                
+                # Combine and shuffle
+                patient_targets = pd.concat([pos_df, neg_df]).sample(frac=1.0, random_state=seed).reset_index(drop=True)
+
     patient_ids = patient_targets["patientId"].tolist()
     targets = patient_targets["Target"].tolist()
 

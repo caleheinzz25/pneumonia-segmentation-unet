@@ -38,3 +38,8 @@ target-version = ["py310"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.uv.workspace]
+members = [
+    "journal/pdf_to_md_project",
+]

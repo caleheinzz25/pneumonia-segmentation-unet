@@ -21,6 +21,25 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
+def _postprocess_lung_mask(mask: np.ndarray) -> np.ndarray:
+    """Apply morphological post-processing to clean up a raw lung segmentation mask.
+
+    Performs closing (fill small holes) followed by dilation (expand slightly)
+    to produce a smooth, connected binary mask.
+
+    Args:
+        mask: Grayscale mask array (H, W), dtype uint8, values 0 or 255.
+
+    Returns:
+        Post-processed grayscale mask, same shape and dtype as input.
+    """
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
+    dilated = cv2.dilate(closed, kernel_dilate, iterations=1)
+    return dilated
+
+
 class LungSegmentationModel:
     """GPU-accelerated lung segmentation using torchxrayvision's pretrained PSPNet.
 

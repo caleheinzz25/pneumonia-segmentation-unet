@@ -10,7 +10,7 @@ import torch
 from src.config import Config, load_config
 from src.lung_segmentation import LungSegmenter
 from src.model import build_model
-from src.transforms import get_validation_transforms
+from src.transforms import IMAGENET_MEAN, IMAGENET_STD
 from src.utils import (
     apply_window,
     grayscale_to_rgb,
@@ -27,7 +27,7 @@ def predict_single(
     config: Config,
     device: str,
     lung_segmenter: LungSegmenter | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Predict on a single image.
 
     Args:
@@ -37,7 +37,7 @@ def predict_single(
         device: Device string
 
     Returns:
-        Tuple of (probability map, input image tensor)
+        Tuple of (probability map, input image tensor, lung mask)
     """
     image_path = Path(image_path)
 
@@ -68,6 +68,7 @@ def predict_single(
 
     # Apply lung mask to focus on lung regions (consistent with training)
     lung_mask_applied = False
+    lung_mask = None
     lung_mask_dirs = [config.data.test_lung_mask_dir, config.data.lung_mask_dir]
     patient_id = image_path.stem
     for mask_dir in lung_mask_dirs:
@@ -77,6 +78,8 @@ def predict_single(
         if mask_path.exists():
             lung_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             if lung_mask is not None:
+                from src.lung_segmentation import _postprocess_lung_mask
+                lung_mask = _postprocess_lung_mask(lung_mask)
                 lung_mask = (lung_mask > 127).astype(np.float32)
                 lung_mask = cv2.resize(lung_mask, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
                 image_resized = image_resized * lung_mask
@@ -92,8 +95,8 @@ def predict_single(
     image_rgb = grayscale_to_rgb(image_resized)
 
     # Normalize and convert to tensor
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
+    mean = np.array(IMAGENET_MEAN)
+    std = np.array(IMAGENET_STD)
     image_norm = (image_rgb - mean) / std
     image_tensor = torch.from_numpy(image_norm.transpose(2, 0, 1)).unsqueeze(0).float()
 
@@ -102,12 +105,19 @@ def predict_single(
     with torch.no_grad():
         image_tensor = image_tensor.to(device)
         logits = model(image_tensor)
+        if isinstance(logits, list):
+            logits = logits[-1]
         prob = torch.sigmoid(logits).cpu().numpy()[0, 0]
 
     # Resize back to original
     prob_resized = cv2.resize(prob, (w_orig, h_orig), interpolation=cv2.INTER_LINEAR)
 
-    return prob_resized, image
+    if lung_mask is not None:
+        lung_mask_orig = cv2.resize(lung_mask, (w_orig, h_orig), interpolation=cv2.INTER_NEAREST)
+    else:
+        lung_mask_orig = np.ones((h_orig, w_orig), dtype=np.float32)
+
+    return prob_resized, image, lung_mask_orig
 
 
 def predict_batch(
@@ -119,7 +129,7 @@ def predict_batch(
     """Predict on a batch of images."""
     results = []
     for path in image_paths:
-        prob, _ = predict_single(model, path, config, device)
+        prob, _, _ = predict_single(model, path, config, device)
         results.append(prob)
     return results
 
@@ -154,7 +164,7 @@ def main():
         image_paths = list(input_path.glob("*.dcm")) + list(input_path.glob("*.png"))
 
     for img_path in image_paths:
-        prob, original_image = predict_single(model, img_path, config, device, lung_segmenter=lung_segmenter)
+        prob, original_image, lung_mask = predict_single(model, img_path, config, device, lung_segmenter=lung_segmenter)
         pred_mask = (prob >= config.inference.threshold).astype(np.float32)
 
         # Save prediction

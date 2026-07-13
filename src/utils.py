@@ -1,6 +1,7 @@
 """Utility functions for DICOM reading, mask generation, logging, and seeding."""
 
 import atexit
+import json
 import os
 import random
 import sys
@@ -69,7 +70,6 @@ class TeeStream:
         return self.stream.isatty()
 
 
-import json
 
 def setup_logging(
     logs_dir: str = "outputs/logs",

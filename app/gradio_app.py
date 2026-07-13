@@ -1,4 +1,4 @@
-"""Gradio web application for pneumonia segmentation."""
+"""Gradio web application for pneumonia region detection and localization."""
 
 import shutil
 import tempfile
@@ -113,8 +113,100 @@ def _confidence_stats(prob: np.ndarray, threshold: float) -> dict[str, float]:
     }
 
 
-class PneumoniaSegmentationApp:
-    """Gradio app for pneumonia segmentation from chest X-rays."""
+def _add_label(img: np.ndarray, text: str) -> np.ndarray:
+    """Draw a text label with a black background box on the top-left of the image."""
+    annotated = img.copy()
+    h_img, w_img = annotated.shape[:2]
+    
+    # Scale parameters based on image width (reference: 512px width)
+    scale_factor = w_img / 512.0
+    font_scale = max(0.6, 0.8 * scale_factor)
+    thickness = max(1, int(2 * scale_factor))
+    padding = int(12 * scale_factor)
+    
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    (w, h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    
+    x, y = padding, h + padding
+    
+    # Draw black background rectangle
+    cv2.rectangle(
+        annotated,
+        (x - 5, y - h - 5),
+        (x + w + 5, y + baseline + 5),
+        (0, 0, 0),
+        -1,
+    )
+    # Draw white text
+    cv2.putText(
+        annotated,
+        text,
+        (x, y),
+        font,
+        font_scale,
+        (255, 255, 255),
+        thickness,
+        cv2.LINE_AA,
+    )
+    return annotated
+
+
+def _generate_kpi_html(detected: str, lung_ratio: float, severity_label: str, severity_emoji: str, severity_color: str) -> str:
+    """Generate responsive HTML for dashboard KPI metrics cards."""
+    status_color = "#ef4444" if detected == "Ya" else "#22c55e"
+    status_text_color = "#ef4444" if detected == "Ya" else "#22c55e"
+    status_icon = "⚠️" if detected == "Ya" else "✅"
+    
+    ratio_color = "#3b82f6"
+    if lung_ratio > 0:
+        ratio_color = severity_color
+
+    return f"""
+    <div class="kpi-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; width: 100%;">
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid {status_color}; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; border: 1px solid var(--border-color-primary);">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--body-text-color-subdued, #64748b);">Status Deteksi</span>
+            <div style="font-size: 1.75rem; font-weight: 800; color: {status_text_color}; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span>{status_icon}</span> <span>{detected}</span>
+            </div>
+        </div>
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid {ratio_color}; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; border: 1px solid var(--border-color-primary);">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--body-text-color-subdued, #64748b);">Rasio Infeksi Paru</span>
+            <div style="font-size: 1.75rem; font-weight: 800; color: var(--body-text-color, #1e293b); margin-top: 0.5rem;">
+                <span>{lung_ratio:.2f}%</span>
+            </div>
+        </div>
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid {severity_color}; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; border: 1px solid var(--border-color-primary);">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--body-text-color-subdued, #64748b);">Tingkat Keparahan</span>
+            <div style="font-size: 1.5rem; font-weight: 800; color: {severity_color}; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span>{severity_emoji}</span> <span>{severity_label}</span>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def _default_kpi_placeholder() -> str:
+    """Generate default placeholder HTML for KPI cards before run."""
+    return """
+    <div class="kpi-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; width: 100%;">
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid #64748b; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color-primary); color: var(--body-text-color-subdued, #64748b); min-height: 100px; display: flex; flex-direction: column; justify-content: space-between;">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Status Deteksi</span>
+            <div style="font-size: 1.25rem; font-weight: 700; margin-top: 0.5rem; color: var(--body-text-color-subdued, #64748b);">Menunggu analisis...</div>
+        </div>
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid #64748b; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color-primary); color: var(--body-text-color-subdued, #64748b); min-height: 100px; display: flex; flex-direction: column; justify-content: space-between;">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Rasio Infeksi Paru</span>
+            <div style="font-size: 1.25rem; font-weight: 700; margin-top: 0.5rem; color: var(--body-text-color-subdued, #64748b);">Menunggu analisis...</div>
+        </div>
+        <div class="kpi-card" style="background: var(--block-background-fill); border-left: 5px solid #64748b; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color-primary); color: var(--body-text-color-subdued, #64748b); min-height: 100px; display: flex; flex-direction: column; justify-content: space-between;">
+            <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Tingkat Keparahan</span>
+            <div style="font-size: 1.25rem; font-weight: 700; margin-top: 0.5rem; color: var(--body-text-color-subdued, #64748b);">Menunggu analisis...</div>
+        </div>
+    </div>
+    """
+
+
+class PneumoniaDetectionApp:
+    """Gradio app for pneumonia region detection and localization from chest X-rays."""
 
     def __init__(self, config: Config):
         self.config = config
@@ -137,7 +229,7 @@ class PneumoniaSegmentationApp:
 
     def _predict_from_file(
         self, file_path: str, threshold: float
-    ) -> tuple[np.ndarray, np.ndarray, str]:
+    ) -> tuple[np.ndarray | None, str, str]:
         """Core prediction from a file path (any supported format)."""
         path = Path(file_path)
         ext = path.suffix.lower()
@@ -146,7 +238,7 @@ class PneumoniaSegmentationApp:
         try:
             gray = _load_image(path)
         except Exception as e:
-            return None, None, f"❌ Gagal membaca file: {e}"
+            return None, _default_kpi_placeholder(), f"❌ Gagal membaca file: {e}"
 
         # Save as temp PNG for predict_single
         with tempfile.NamedTemporaryFile(suffix=ext if ext in DICOM_EXTS else ".png", delete=False) as f:
@@ -158,13 +250,20 @@ class PneumoniaSegmentationApp:
                 cv2.imwrite(temp_path, (gray * 255).astype(np.uint8))
 
         try:
-            prob, original = predict_single(
+            prob, original, lung_mask = predict_single(
                 self.model, temp_path, self.config, self.device,
                 lung_segmenter=self.lung_segmenter,
             )
             pred_mask = (prob >= threshold).astype(np.float32)
 
             # --- Visual outputs -----------------------------------------------
+
+            lung_mask_vis = (lung_mask * 255).astype(np.uint8)
+            lung_mask_rgb = cv2.cvtColor(lung_mask_vis, cv2.COLOR_GRAY2RGB)
+
+            lung_img = original * lung_mask
+            lung_img_vis = (lung_img * 255).astype(np.uint8)
+            lung_img_rgb = cv2.cvtColor(lung_img_vis, cv2.COLOR_GRAY2RGB)
 
             # Overlay: red for infection
             overlay = overlay_mask(
@@ -180,6 +279,16 @@ class PneumoniaSegmentationApp:
                 (prob * 255).astype(np.uint8), cv2.COLORMAP_JET
             )
             prob_rgb = cv2.cvtColor(prob_colored, cv2.COLOR_BGR2RGB)
+
+            # --- Combine into 2x2 Grid with Labels -----------------------------
+            img_a = _add_label(overlay_rgb, "A. Overlay Infeksi")
+            img_b = _add_label(prob_rgb, "B. Heatmap Grad-CAM")
+            img_c = _add_label(lung_mask_rgb, "C. Masker Paru")
+            img_d = _add_label(lung_img_rgb, "D. Paru Terisolasi")
+
+            top_row = np.hstack([img_a, img_b])
+            bottom_row = np.hstack([img_c, img_d])
+            grid_rgb = np.vstack([top_row, bottom_row])
 
             # --- Analysis stats -----------------------------------------------
 
@@ -224,7 +333,7 @@ class PneumoniaSegmentationApp:
             info_lines.append(f"|---|---|")
             info_lines.append(f"| **Pneumonia Terdeteksi** | {detected} |")
             info_lines.append(f"| **Area Infeksi (total)** | "
-                              f"{infected_pixels:,} piksel ({total_ratio:.2f}%) |")
+                               f"{infected_pixels:,} piksel ({total_ratio:.2f}%) |")
             info_lines.append(
                 f"| **Area Infeksi (paru-paru)** | {lung_ratio:.2f}% dari area paru |"
             )
@@ -290,24 +399,12 @@ class PneumoniaSegmentationApp:
                     f"| Std. Deviasi | {conf['std']:.4f} |\n"
                 )
 
-            # Model info
-            info_lines.append("---\n")
-            info_lines.append("### ⚙️ Informasi Model\n")
-            info_lines.append(f"| Parameter | Nilai |")
-            info_lines.append(f"|---|---|")
-            info_lines.append(
-                f"| Arsitektur | {self.config.model.architecture} |"
-            )
-            info_lines.append(
-                f"| Encoder | {self.config.model.encoder_name} |"
-            )
-            info_lines.append(
-                f"| Attention | {self.config.model.decoder_attention_type} |"
-            )
-            info_lines.append(f"| Device | {self.device} |")
-
             info = "\n".join(info_lines)
-            return overlay_rgb, prob_rgb, info
+            
+            # Generate KPI metrics HTML block
+            kpi_html = _generate_kpi_html(detected, lung_ratio, severity_label, severity_emoji, severity_color)
+            
+            return grid_rgb, kpi_html, info
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
@@ -315,13 +412,13 @@ class PneumoniaSegmentationApp:
     def predict_from_upload(self, file, threshold: float):
         """Handle gr.File upload (DICOM or any image)."""
         if file is None:
-            return None, None, "⚠️ Silakan upload file X-ray terlebih dahulu."
+            return None, _default_kpi_placeholder(), "⚠️ Silakan upload file X-ray terlebih dahulu."
         return self._predict_from_file(file, threshold)
 
     def predict_from_image(self, input_image: np.ndarray, threshold: float):
         """Handle gr.Image upload (drag-and-drop regular images)."""
         if input_image is None:
-            return None, None, "⚠️ Silakan upload gambar X-ray terlebih dahulu."
+            return None, _default_kpi_placeholder(), "⚠️ Silakan upload gambar X-ray terlebih dahulu."
 
         # Convert numpy to a temp file
         if input_image.ndim == 3:
@@ -343,123 +440,232 @@ class PneumoniaSegmentationApp:
 
     def create_interface(self) -> gr.Blocks:
         """Create Gradio interface."""
+        
+        # Define modern styles
         custom_css = """
-        /* Make result images large on desktop */
-        .result-image img {
-            min-height: 400px;
-            object-fit: contain;
+        /* Header styling */
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
         }
-        /* Mobile: stack columns vertically */
-        @media (max-width: 768px) {
-            .input-row { flex-direction: column !important; }
-            .result-image img { min-height: 250px; }
+        .app-header h1 {
+            font-size: 2.5rem !important;
+            font-weight: 850 !important;
+            background: linear-gradient(135deg, #0d9488, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Sidebar styling */
+        .sidebar-container {
+            border-radius: 12px !important;
+            padding: 1rem !important;
+        }
+        
+        /* Result images styling */
+        .result-image {
+            border-radius: 12px !important;
+            overflow: hidden !important;
+        }
+        
+        /* Stats cards custom animations */
+        .kpi-card {
+            transition: all 0.3s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+        }
+        
+        /* Example container */
+        .examples-container {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border-color-primary);
+            padding-top: 1rem;
+        }
+        
+        /* Custom tabs styling */
+        .nav-tabs {
+            border-bottom: 2px solid var(--border-color-primary) !important;
         }
         """
 
+        theme = gr.themes.Soft(
+            primary_hue="teal",
+            secondary_hue="slate",
+            neutral_hue="slate",
+            font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui"],
+        ).set(
+            body_background_fill="*neutral_50",
+            body_background_fill_dark="*neutral_950",
+            block_background_fill="*neutral_100",
+            block_background_fill_dark="*neutral_900",
+            block_border_width="1px",
+            block_border_color="*neutral_200",
+            block_border_color_dark="*neutral_800",
+            block_label_text_size="*text_sm",
+            block_label_text_weight="600",
+            button_primary_background_fill="*primary_600",
+            button_primary_background_fill_dark="*primary_700",
+            button_primary_background_fill_hover="*primary_500",
+            button_primary_background_fill_hover_dark="*primary_600",
+            button_primary_text_color="*white",
+        )
+
         with gr.Blocks(
             title=self.config.app.title,
-            theme=gr.themes.Soft(primary_hue="blue", secondary_hue="slate"),
+            theme=theme,
             css=custom_css,
         ) as demo:
-            gr.Markdown(
-                f"# 🫁 {self.config.app.title}\n"
-                f"{self.config.app.description}"
-            )
-
-            # --- Top row: input controls ---
-            with gr.Row(elem_classes="input-row"):
-                with gr.Column(scale=2):
-                    gr.Markdown(
-                        "**Format yang didukung:** DICOM (`.dcm`), PNG, JPG, JPEG, BMP, TIFF, WEBP"
-                    )
-                    with gr.Tabs():
-                        with gr.TabItem("📁 Upload File (DICOM & Gambar)"):
-                            input_file = gr.File(
-                                label="Upload file X-Ray",
-                                file_types=[
-                                    ".dcm", ".dicom",
-                                    ".png", ".jpg", ".jpeg",
-                                    ".bmp", ".tif", ".tiff", ".webp",
-                                ],
-                                type="filepath",
-                            )
-                            predict_btn_file = gr.Button(
-                                "🔬 Analisis File", variant="primary", size="lg"
-                            )
-                        with gr.TabItem("🖼️ Drag & Drop Gambar"):
-                            input_image = gr.Image(
-                                type="numpy",
-                                label="Upload gambar X-Ray",
-                                sources=["upload"],
-                                height=250,
-                            )
-                            predict_btn_image = gr.Button(
-                                "🔬 Analisis Gambar", variant="primary", size="lg"
-                            )
-                with gr.Column(scale=1):
-                    threshold_slider = gr.Slider(
-                        minimum=0.1,
-                        maximum=0.9,
-                        value=self.config.inference.threshold,
-                        step=0.05,
-                        label="🎚️ Threshold Deteksi",
-                        info="Semakin rendah = lebih sensitif, semakin tinggi = lebih spesifik",
-                    )
-
-            # --- Middle: large result images (full width) ---
-            gr.Markdown("### 📷 Hasil Visualisasi")
+            
+            # --- Header ---
+            with gr.Column(elem_classes="app-header"):
+                gr.Markdown(
+                    f"# 🫁 {self.config.app.title}\n"
+                    f"{self.config.app.description}"
+                )
+            
+            # --- Main Layout Grid ---
             with gr.Row():
-                output_overlay = gr.Image(
-                    type="numpy",
-                    label="🖼️ Hasil Segmentasi",
-                    elem_classes="result-image",
-                    height=480,
-                )
-                output_heatmap = gr.Image(
-                    type="numpy",
-                    label="🌡️ Probability Heatmap",
-                    elem_classes="result-image",
-                    height=480,
-                )
+                
+                # --- Left Side: Input & Configuration ---
+                with gr.Column(scale=4, elem_classes="sidebar-container"):
+                    with gr.Group():
+                        gr.Markdown("### 📥 Input Citra Medis")
+                        with gr.Tabs():
+                            with gr.TabItem("File Upload (DICOM / Image)"):
+                                input_file = gr.File(
+                                    label="Upload DICOM (.dcm, .dicom) atau format citra standar",
+                                    file_types=[
+                                        ".dcm", ".dicom",
+                                        ".png", ".jpg", ".jpeg",
+                                        ".bmp", ".tif", ".tiff", ".webp",
+                                    ],
+                                    type="filepath",
+                                )
+                                predict_btn_file = gr.Button(
+                                    "🔬 Analisis File", variant="primary", size="lg"
+                                )
+                            with gr.TabItem("Drag & Drop Gambar"):
+                                input_image = gr.Image(
+                                    type="numpy",
+                                    label="Tarik & letakkan gambar Chest X-ray di sini",
+                                    sources=["upload"],
+                                    height=250,
+                                )
+                                predict_btn_image = gr.Button(
+                                    "🔬 Analisis Gambar", variant="primary", size="lg"
+                                )
+                    
+                    with gr.Group():
+                        gr.Markdown("### ⚙️ Pengaturan Model")
+                        threshold_slider = gr.Slider(
+                            minimum=0.1,
+                            maximum=0.9,
+                            value=self.config.inference.threshold,
+                            step=0.05,
+                            label="🎚️ Threshold Deteksi",
+                            info="Nilai lebih rendah: lebih sensitif (banyak deteksi). Nilai lebih tinggi: lebih spesifik (deteksi lebih pasti).",
+                        )
+                    
+                    with gr.Accordion("📋 Panduan Interpretasi & Nilai Rujukan", open=False):
+                        gr.Markdown(
+                            """
+                            **Tingkat Keparahan berdasarkan Rasio Infeksi Paru:**
+                            - **0%**: Normal ✅ (Tidak terdeteksi area infeksi)
+                            - **0.1% - 5.0%**: Ringan (Mild) 🟡
+                            - **5.1% - 15.0%**: Sedang (Moderate) 🟠
+                            - **15.1% - 30.0%**: Berat (Severe) 🔴
+                            - **> 30.0%**: Kritis (Critical) 🚨
+                            
+                            *Rasio infeksi dihitung sebagai persentase area terinfeksi pneumonia terhadap estimasi total area paru-paru.*
+                            """
+                        )
+                        
+                    with gr.Accordion("⚙️ Spesifikasi Model Aktif", open=False):
+                        gr.Markdown(
+                            f"""
+                            - **Arsitektur:** {self.config.model.architecture}
+                            - **Backbone Encoder:** `{self.config.model.encoder_name}` (ImageNet Weights)
+                            - **Attention Type:** `{self.config.model.decoder_attention_type}` (Spatial-Channel Squeeze & Excitation)
+                            - **Decoder Channels:** `{list(self.config.model.decoder_channels)}`
+                            - **Running Device:** `{self.device.upper()}`
+                            """
+                        )
 
-            # --- Bottom: analysis report ---
-            output_info = gr.Markdown(
-                value="*Upload gambar X-ray dan klik **Analisis** untuk memulai.*",
-                label="📋 Laporan Analisis",
+                    # --- Examples Panel ---
+                    gr.Markdown("### 📋 Contoh Citra X-Ray", elem_classes="examples-container")
+                    examples = gr.Examples(
+                        examples=[
+                            ["data/pneumonia/chest_xray/test/NORMAL/IM-0001-0001.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/chest_xray/test/PNEUMONIA/person100_bacteria_475.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/chest_xray/test/PNEUMONIA/person108_bacteria_511.jpeg", self.config.inference.threshold],
+                        ],
+                        inputs=[input_file, threshold_slider],
+                        label="Klik salah satu contoh gambar di bawah untuk mencoba langsung:",
+                    )
+                
+                # --- Right Side: Dashboard & Visualizations ---
+                with gr.Column(scale=6):
+                    # --- KPI Metrics Row ---
+                    output_kpis = gr.HTML(
+                        value=_default_kpi_placeholder(),
+                        label="Statistik Utama",
+                    )
+                    
+                    # --- Output Visualization Grid ---
+                    with gr.Row():
+                        with gr.Column(scale=6):
+                            output_grid = gr.Image(
+                                type="numpy",
+                                label="Hasil Analisis (A: Overlay, B: Heatmap, C: Masker Paru, D: Paru Terisolasi)",
+                                elem_classes="result-image",
+                                interactive=False,
+                                height=600,
+                            )
+                        with gr.Column(scale=4):
+                            output_info = gr.Markdown(
+                                value="*Silakan unggah citra chest X-ray di panel kiri dan klik **Analisis** untuk melihat laporan diagnosis di sini.*",
+                                label="Laporan Hasil Analisis",
+                            )
+
+            # --- Footer / Disclaimer ---
+            gr.Markdown(
+                """
+                ---
+                <div style="text-align: center; color: var(--body-text-color-subdued); font-size: 0.85rem; padding: 1rem 0;">
+                    <strong>⚠️ Disclaimer Medis</strong><br>
+                    Sistem ini merupakan purwarupa penelitian (thesis) berbasis deep learning untuk tujuan edukasi dan evaluasi akademis. 
+                    Hasil analisis model AI tidak dapat dijadikan sebagai pengganti diagnosis klinis oleh dokter spesialis radiologi/paru-paru profesional.
+                </div>
+                """
             )
 
+            # --- Click Handlers ---
             predict_btn_file.click(
                 fn=self.predict_from_upload,
                 inputs=[input_file, threshold_slider],
-                outputs=[output_overlay, output_heatmap, output_info],
+                outputs=[output_grid, output_kpis, output_info],
             )
             predict_btn_image.click(
                 fn=self.predict_from_image,
                 inputs=[input_image, threshold_slider],
-                outputs=[output_overlay, output_heatmap, output_info],
-            )
-
-            gr.Markdown(
-                """
-                ---
-                ### ⚠️ Disclaimer
-                Tool ini hanya untuk tujuan **edukasi dan penelitian**.
-                Tidak boleh digunakan sebagai pengganti diagnosis medis profesional.
-                Selalu konsultasikan dengan tenaga kesehatan yang berkualifikasi
-                untuk saran medis.
-                """
+                outputs=[output_grid, output_kpis, output_info],
             )
 
         return demo
 
 
 def main():
+    import os
     config = load_config("config.yaml")
-    app = PneumoniaSegmentationApp(config)
+    app = PneumoniaDetectionApp(config)
     demo = app.create_interface()
+    port = int(os.environ.get("GRADIO_SERVER_PORT", config.app.port))
     demo.launch(
         server_name=config.app.host,
-        server_port=config.app.port,
+        server_port=port,
         share=config.app.share,
     )
 

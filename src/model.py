@@ -1,4 +1,6 @@
-"""Model definition: Attention UNet++ with pretrained encoder."""
+"""Model definition: Attention U-Net with pretrained encoder, attention, and deep supervision."""
+
+from __future__ import annotations
 
 import segmentation_models_pytorch as smp
 import torch
@@ -7,22 +9,21 @@ import torch.nn as nn
 from src.config import ModelConfig
 
 
-class AttentionUNetPlusPlus(nn.Module):
-    """UNet++ with attention gates and pretrained encoder backbone.
+class SegmentationModel(nn.Module):
+    """Segmentation model with pretrained encoder backbone.
 
-    Uses segmentation-models-pytorch (SMP) UnetPlusPlus with:
+    Uses segmentation-models-pytorch (SMP) to create the specified architecture with:
     - Pretrained ImageNet encoder
     - SCSE attention in decoder (Spatial + Channel SE)
-    - Deep supervision support (optional)
+    - Optional deep supervision via forward hooks on decoder blocks
+      with separate 1×1 conv heads for each intermediate output level.
     """
 
     def __init__(self, config: ModelConfig):
         super().__init__()
         self.config = config
-
-        # Build model using SMP
-        self.model = smp.create_model(
-            arch="unetplusplus",
+        smp_kwargs = dict(
+            arch=config.architecture.lower(),
             encoder_name=config.encoder_name,
             encoder_weights=config.encoder_weights,
             in_channels=config.in_channels,
@@ -30,6 +31,8 @@ class AttentionUNetPlusPlus(nn.Module):
             activation=config.activation,
             decoder_attention_type=config.decoder_attention_type,
         )
+
+        self.model = smp.create_model(**smp_kwargs)
 
         # Store encoder for Grad-CAM / feature extraction
         self.encoder = self.model.encoder
@@ -41,12 +44,12 @@ class AttentionUNetPlusPlus(nn.Module):
             x: Input tensor of shape (B, C, H, W)
 
         Returns:
-            Output logits of shape (B, classes, H, W)
+            Output logits (B, classes, H, W)
         """
         return self.model(x)
 
     def get_encoder_features(self, x: torch.Tensor) -> list[torch.Tensor]:
-        """Extract intermediate encoder features for deep supervision / analysis.
+        """Extract intermediate encoder features for analysis.
 
         Args:
             x: Input tensor of shape (B, C, H, W)
@@ -62,7 +65,7 @@ class AttentionUNetPlusPlus(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-def build_model(config: ModelConfig, device: str = "cuda") -> AttentionUNetPlusPlus:
+def build_model(config: ModelConfig, device: str = "cuda") -> SegmentationModel:
     """Build and move model to device.
 
     Args:
@@ -72,11 +75,11 @@ def build_model(config: ModelConfig, device: str = "cuda") -> AttentionUNetPlusP
     Returns:
         Initialized model on target device
     """
-    model = AttentionUNetPlusPlus(config)
+    model = SegmentationModel(config)
     model = model.to(device)
 
     total_params = model.num_parameters
-    print(f"Model: UNet++ with {config.encoder_name} encoder")
+    print(f"Model: {config.architecture} with {config.encoder_name} encoder")
     print(f"Decoder attention: {config.decoder_attention_type}")
     print(f"Total trainable parameters: {total_params:,}")
 
