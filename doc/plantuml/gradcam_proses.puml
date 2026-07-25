@@ -1,0 +1,52 @@
+@startuml gradcam_proses
+skinparam backgroundColor white
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 11
+skinparam shadowing false
+
+title Proses Grad-CAM (Gradient-weighted Class Activation Mapping)
+
+rectangle "**Input Image**\nCitra X-Ray" as input #E8F5E9
+rectangle "**CNN Model**\n(CNN U-Net dengan sCSE)" as model #BBDEFB
+rectangle "**Target Layer**\n(Last Encoder Block)\nActivation Map A^k" as target #64B5F6
+rectangle "**Output**\nPrediksi Segmentasi" as output #42A5F5
+
+rectangle "**Backpropagation**\nHitung gradien ∂y/∂A^k" as backprop #FFCDD2
+
+rectangle "**Global Average\nPooling Gradien**\nα_k = (1/Z) Σ ∂y/∂A^k" as pool_grad #EF9A9A
+
+rectangle "**Weighted\nCombination**\nL = ReLU(Σ α_k · A^k)" as weighted #EF5350
+
+rectangle "**Heatmap**\nNormalisasi ke [0,1]" as heatmap #FFA726
+
+rectangle "**Overlay**\nSuperimpose pada\ncitra asli" as overlay #E8F5E9
+
+' === Flow ===
+input --> model
+model --> target : "Forward Pass"
+model --> output : "Forward Pass"
+
+output --> backprop : "Score"
+backprop --> pool_grad : "Gradien"
+target --> weighted : "Activation Maps"
+pool_grad --> weighted : "Bobot α_k"
+
+weighted --> heatmap
+heatmap --> overlay
+input --> overlay
+
+note right of weighted
+  ReLU diterapkan untuk
+  hanya mempertahankan
+  fitur yang berkontribusi
+  **positif** terhadap
+  kelas target
+end note
+
+note bottom of overlay
+  Hasil: Visualisasi area
+  yang "diperhatikan" model
+  untuk keputusan segmentasi
+end note
+
+@enduml

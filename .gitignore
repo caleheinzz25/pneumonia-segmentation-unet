@@ -41,6 +41,32 @@ out/
 cloudflared_config.json
 .agents/
 
-# Documentation & IDE states
-doc/
+# Documentation build files (keep .tex, .bib, Makefile, img/, plantuml/ tracked)
+doc/**/*.pdf
+doc/**/*.docx
+doc/**/*.aux
+doc/**/*.log
+doc/**/*.toc
+doc/**/*.lof
+doc/**/*.lot
+doc/**/*.out
+doc/**/*.bbl
+doc/**/*.blg
+doc/**/*.bcf
+doc/**/*.run.xml
+doc/*.pdf
+doc/*.docx
+doc/*.aux
+doc/*.log
+doc/*.toc
+doc/*.lof
+doc/*.lot
+doc/*.out
+doc/*.bbl
+doc/*.blg
+doc/*.bcf
+doc/*.run.xml
+doc/skripsi/
+doc/refrence/
+doc/markitdown/
 .claude/

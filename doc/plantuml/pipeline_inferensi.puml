@@ -1,0 +1,37 @@
+@startuml pipeline_inferensi
+skinparam backgroundColor white
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam activityBorderColor #4A148C
+skinparam activityBackgroundColor #F3E5F5
+skinparam arrowColor #4A148C
+
+start
+
+:Unggah Citra CXR (DICOM/PNG/JPEG) oleh Pengguna;
+
+:Pra-pemrosesan Data
+--
+* Ekstraksi piksel rontgen & normalisasi intensitas
+* Segmentasi area paru-paru otomatis dengan PSPNet;
+
+:Segmentasi Lesi Pneumonia (Model Utama)
+--
+* Forward pass citra ter-masking pada model U-Net sCSE
+* Konversi output sigmoid ke masker biner (threshold >= 0.65);
+
+:Analisis Kualitatif & Kuantitatif (Pasca-Inferensi)
+--
+* **Keterjelasan**: Ekstraksi peta panas kontribusi fitur (probability heatmap)
+* **Lateralitas**: Identifikasi distribusi infeksi (Kiri, Kanan, atau Bilateral)
+* **Tingkat Keparahan**: Rasio luas infeksi terhadap total luas paru-paru
+  (Normal: 0%, Ringan: <=5%, Sedang: <=15%, Berat: <=30%, Kritis: >30%);
+
+:Tampilkan Hasil pada Antarmuka Gradio
+--
+* Visualisasi: Citra Rontgen Asli, Overlay Masker, & Peta Panas Probabilitas
+* Informasi: Prediksi Biner, Skor Keparahan (%), & Posisi Lateralitas;
+
+stop
+@enduml

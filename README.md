@@ -1,358 +1,277 @@
-# Segmentasi Citra Radiografi Dada untuk Pendeteksian Area Infeksi Pneumonia Menggunakan Model Deep Learning Attention U-Net
+# Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada Menggunakan Arsitektur U-Net dan Atensi sCSE
 
-Proyek ini mengimplementasikan pipeline deep learning untuk deteksi dan segmentasi otomatis pneumonia dari citra X-ray dada (CXR) menggunakan arsitektur **Attention U-Net** dengan encoder **EfficientNet-B3** pretrained.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.6+](https://img.shields.io/badge/PyTorch-2.6+-ee4c2c.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Gradio](https://img.shields.io/badge/Web%20App-Gradio-orange.svg)](https://gradio.app)
+[![Cloudflare Tunnel](https://img.shields.io/badge/Deployment-Cloudflare%20Tunnel-f38020.svg)](https://www.cloudflare.com/)
 
-## Fitur Utama
+Sistem *Deep Learning* untuk deteksi dan segmentasi otomatis area infeksi pneumonia pada citra rontgen dada (*Chest X-Ray* / CXR) menggunakan arsitektur **U-Net dengan Atensi sCSE (*Spatial and Channel Squeeze-and-Excitation*)** dan *backbone* **EfficientNet-B3** *pretrained* ImageNet.
+
+Proyek ini dikembangkan berdasarkan kerangka kerja **CRISP-DM** (*Cross-Industry Standard Process for Data Mining*) dan diintegrasikan dengan antarmuka web interaktif berbasis **Gradio** serta penyebaran publik melalui **Cloudflare Tunnel**.
+
+---
+
+## 📌 Fitur Utama
 
 | Fitur | Deskripsi |
 |-------|-----------|
-| **Attention U-Net** | Skip connections dengan SCSE (Spatial & Channel Squeeze-and-Excitation) attention gates |
-| **Pretrained Encoder** | ImageNet-pretrained EfficientNet-B3 backbone dengan differential learning rate |
-| **Dual Mask Approach** | Lung segmentation mask untuk masking input + precomputed pneumonia mask untuk ground truth |
-| **Auto Lung Segmentation** | Fallback otomatis menggunakan torchxrayvision PSPNet saat precomputed lung mask tidak tersedia |
-| **AMP Training** | Automatic Mixed Precision untuk training lebih cepat |
-| **Unified Focal Loss** | Gabungan Focal Loss + Focal Tversky Loss untuk meredam false positives |
-| **Cosine Annealing** | Scheduler penurunan laju belajar harmonis tanpa lonjakan tiba-tiba |
-| **Resume Training** | Lanjutkan training dari checkpoint terakhir dengan `--resume`, log dilanjutkan di file yang sama |
-| **Comprehensive Metrics** | Per-sample Dice, IoU, Precision, Recall, Specificity, AUC (negatif-aware) |
-| **Medical Augmentation** | CLAHE, GaussNoise, CoarseDropout, Elastic, Affine |
-| **Grad-CAM** | Visualisasi area yang "diperhatikan" model |
-| **Gradio Web App** | Interface interaktif untuk upload dan analisis X-ray |
+| **U-Net + sCSE Attention** | Arsitektur segmentasi U-Net yang diperkuat modul atensi *Spatial and Channel Squeeze-and-Excitation* (sCSE) pada *skip connections* untuk menajamkan kontras fitur infeksi. |
+| **Pretrained EfficientNet-B3** | *Backbone encoder* EfficientNet-B3 *pretrained* ImageNet dengan laju belajar diferensial (*encoder factor* `0.02` / 50x lebih lambat) untuk mencegah *catastrophic forgetting*. |
+| **Dual Masking Strategy** | Pendekatan pemotongan organ paru (*lung segmentation*) otomatis berbasis model **PSPNet** (*TorchXRayVision*) untuk mengisolasi area analisis + masker *ground truth* pneumonia. |
+| **Unified Focal Loss** | Fungsi kerugian kombinasi *Focal Loss* (bobot `0.5`) dan *Focal Tversky Loss* ($\alpha=0.3, \beta=0.7, \gamma=0.75$) untuk menekan *false positives* dan menangani ketimpangan data. |
+| **Pelatihan Dua Tahap & AMP** | *Encoder* dibekukan pada 12 epoch pertama (*warmup* decoder), menggunakan *Automatic Mixed Precision* (AMP) dan *Gradient Accumulation* 4 langkah (*effective batch size* 32). |
+| **Cosine Annealing Scheduler** | Penurunan laju belajar secara halus tanpa lonjakan *warmup* tiba-tiba ($T_{\text{max}} = 100$ epoch). |
+| **Exponential Moving Average (EMA)** | Menjaga bobot *moving average* model ($\text{decay} = 0.999$) untuk evaluasi validasi yang lebih stabil. |
+| **Test-Time Augmentation (TTA)** | Penggabungan prediksi saat inferensi dengan TTA (*horizontal & vertical flips*) untuk stabilitas batas segmentasi. |
+| **Grad-CAM Explainability** | Generasi peta panas (*heatmap*) Grad-CAM pada lapisan konvolusi terakhir untuk transparansi keputusan klinis (*Explainable AI*). |
+| **Analisis Keparahan & Lateralitas** | Kalkulasi rasio persentase infeksi ke dalam 5 tingkat keparahan (*Sangat Ringan* hingga *Sangat Berat*) serta lokasi paru (*Kiri, Kanan, Bilateral*). |
+| **Gradio Web App & Cloudflare Tunnel** | Antarmuka interaktif medis yang dapat diakses secara publik via internet melalui enkripsi terowongan aman Cloudflare. |
 
-## Arsitektur Model
+---
 
-```
-Input (3, 512, 512)
-    |
-EfficientNet-B3 Encoder (pretrained ImageNet)
-    |-- Stage 1: 64x64 features
-    |-- Stage 2: 32x32 features
-    |-- Stage 3: 16x16 features
-    |-- Stage 4: 8x8 features
-    |-- Stage 5: 4x4 features
-    |
-U-Net Decoder with SCSE Attention Gates
-    |-- Skip connections with SCSE Attention Gates
-    |-- SCSE: Spatial + Channel attention per decoder block
-    |
-Output (1, 512, 512) - Sigmoid probability map
-```
+## 📊 Hasil Evaluasi Kuantitatif
 
-### Training Strategy
+Model dievaluasi pada data validasi *RSNA Pneumonia Detection Challenge* (26.684 citra) dengan nilai ambang batas inferensi `0.65`:
+
+| Metrik Evaluasi | Nilai Kuantitatif | Keterangan Klinis |
+|-----------------|-------------------|-------------------|
+| **Dice Coefficient** | **0,6234** (62,34%) | Mengukur derajat kesamaan/overlap antara hasil segmentasi model dan *ground truth*. |
+| **Specificity (Spesifisitas)** | **0,9781** (97,81%) | Mengukur keandalan model dalam membedakan jaringan paru sehat (*true negative rate* tinggi). |
+| **Recall (Sensitivitas)** | **0,7082** (70,82%) | Memastikan model mampu mendeteksi sebagian besar area infeksi pneumonia (*true positive rate*). |
+| **Precision (Presisi)** | **0,6868** (68,68%) | Rasio ketepatan piksel yang diprediksi sebagai infeksi pneumonia. |
+| **Intersection over Union (IoU)** | **0,5010** (50,10%) | Jaccard index tingkat piksel. |
+| **Area Under ROC Curve (AUC)** | **0,9857** (98,57%) | Kemampuan pemisahan distribusi probabilistik kelas positif dan negatif. |
+| **Accuracy (Akurasi Piksel)** | **0,9509** (95,09%) | Akurasi agregat klasifikasi piksel pada seluruh area citra rontgen. |
+
+---
+
+## 🏗️ Arsitektur Sistem & Model
 
 ```
-Epoch 1-12: Encoder frozen, decoder-only training (LR = 4e-4)
-Epoch 13+:  Encoder unfrozen, differential LR
-             ├── Encoder: 8e-6 (50x lower, factor 0.02)
-             └── Decoder: 4e-4 (full LR)
-
-Scheduler: Cosine Annealing
-             ├── Warmup: None (gentle cosine decay to 1e-6)
-             └── T_max: 100 epochs
-
-Loss: Unified Focal Loss (0.5 Focal Loss + 0.5 Focal Tversky Loss)
+                    ┌─────────────────────────────────────────┐
+                    │      Citra Rontgen Dada (DICOM/PNG)     │
+                    └────────────────────┬────────────────────┘
+                                         │
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │   Segmentasi Paru-Paru (PSPNet Auto)    │
+                    └────────────────────┬────────────────────┘
+                                         │
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │     Input Masked Tensor (3, 512, 512)   │
+                    └────────────────────┬────────────────────┘
+                                         │
+       ┌─────────────────────────────────┴─────────────────────────────────┐
+       │                                                                   │
+       ▼                                                                   ▼
+┌─────────────────────────────┐                         ┌─────────────────────────────┐
+│    EfficientNet-B3 Encoder  │                         │       U-Net Decoder         │
+│     (Pretrained ImageNet)   │ ──── Skip Connections ─▶│  + sCSE Attention Modules   │
+│  (LR Factor 0.02 / 50x slow)│   (Spatial & Channel)   │    (Channels: 256..16)      │
+└─────────────────────────────┘                         └──────────────┬──────────────┘
+                                                                       │
+                                                                       ▼
+                                                        ┌─────────────────────────────┐
+                                                        │  Sigmoid Output (1,512,512) │
+                                                        └──────────────┬──────────────┘
+                                                                       │
+                                         ┌─────────────────────────────┴─────────────────────────────┐
+                                         │                                                           │
+                                         ▼                                                           ▼
+                      ┌────────────────────────────────────┐                      ┌────────────────────────────────────┐
+                      │    Overlay Segmentasi Pneumonia    │                      │       Heatmap Grad-CAM (XAI)       │
+                      │    + Keparahan & Lateralitas       │                      │      (Visualisasi Fokus Model)     │
+                      └────────────────────────────────────┘                      └────────────────────────────────────┘
 ```
 
-## Struktur Project
+---
+
+## 📁 Struktur Project
 
 ```
 .
-├── config.yaml              # File konfigurasi sentral
-├── pyproject.toml           # UV package management
-├── README.md                # Dokumentasi ini
-├── src/
-│   ├── config.py            # YAML parser → dataclass
-│   ├── dataset.py           # RSNA dataset: DICOM reader, bbox→mask, precomputed masks
-│   ├── transforms.py        # Albumentations: augmentasi + normalisasi
-│   ├── model.py             # Attention U-Net (SMP wrapper)
-│   ├── losses.py            # Per-sample Dice, Tversky, BCE, ComboLoss
-│   ├── metrics.py           # Per-sample Dice, IoU, Precision, Recall, Specificity, AUC
-│   ├── train.py             # Training loop: AMP, gradient accumulation, resume, early stopping
-│   ├── evaluate.py          # Evaluasi + visualisasi overlay
-│   ├── predict.py           # Inference: single image / batch + auto lung masking
-│   ├── lung_segmentation.py # Auto lung segmentation (torchxrayvision PSPNet)
-│   ├── explainability.py    # Grad-CAM heatmap generation
-│   └── utils.py             # DICOM read, windowing, overlay, seeding, logging (JSON state)
+├── config.yaml                     # Berkas konfigurasi sentral eksperimen & model
+├── pyproject.toml                  # Manajemen dependen berbasis UV
+├── README.md                       # Dokumentasi utama proyek
+├── CODEBASE_NOTES.md               # Catatan arsitektur & keputusan teknis (v1 vs v2)
 ├── app/
-│   └── gradio_app.py        # Web interface (Gradio)
+│   └── gradio_app.py               # Antarmuka web interaktif medis (Gradio)
+├── src/
+│   ├── config.py                   # YAML parser & pembentuk dataclass konfigurasi
+│   ├── dataset.py                  # Dataset RSNA: pemroses DICOM & dual-masking
+│   ├── transforms.py               # Augmentasi medis (Albumentations) & normalisasi
+│   ├── model.py                    # Arsitektur U-Net + sCSE + Auxiliary Head
+│   ├── losses.py                   # Unified Focal Loss (Focal + Focal Tversky)
+│   ├── metrics.py                  # Komputasi metrik (Dice, IoU, Precision, Recall, Specificity, AUC)
+│   ├── train.py                    # Loop pelatihan: AMP, accumulation, EMA, resume state
+│   ├── evaluate.py                 # Evaluasi kuantitatif & visualisasi sampel
+│   ├── predict.py                  # Inferensi CLI (single/batch) + auto lung masking
+│   ├── lung_segmentation.py        # Segmentasi paru-paru otomatis (PSPNet)
+│   ├── explainability.py           # Generasi peta panas Grad-CAM
+│   └── utils.py                    # Windowing DICOM, logging state, overlay visual
 ├── scripts/
-│   ├── train.sh             # Script training
-│   ├── evaluate.sh          # Script evaluasi
-│   ├── predict.sh           # Script inference
-│   ├── app.sh               # Script launch web app
-│   └── precompute_lungmask.py  # Precompute lung mask batch (GPU-accelerated)
+│   ├── train.sh                    # Script eksekusi pelatihan
+│   ├── evaluate.sh                 # Script eksekusi evaluasi
+│   ├── predict.sh                  # Script eksekusi inferensi
+│   ├── app.sh                      # Script peluncuran web app
+│   ├── precompute_all_masks.py     # Precompute lung mask + ground truth GT masks
+│   └── precompute_lungmask.py     # Precompute lung mask batch (GPU)
 ├── data/
-│   ├── rsna-pneumonia-detection-challenge/
-│   │   ├── stage_2_train_images/       # DICOM training images (~26K)
-│   │   ├── stage_2_test_images/        # DICOM test images
-│   │   ├── stage_2_train_labels.csv    # Bounding box annotations
-│   │   └── stage_2_detailed_class_info.csv
-│   └── lung_masks/
-│       ├── lung_segmentation/          # Lung mask: masking input image
-│       ├── pneumonia_ground_truth/     # Precomputed pneumonia mask: ground truth
-│       ├── test/                       # Lung mask untuk test/inference images
-│       ├── combined/                   # Visualisasi: lung + pneumonia overlay
-│       └── visualizations/            # Visualisasi hasil
-└── outputs/
-    ├── checkpoints/         # best_model.pth & latest_model.pth
-    ├── logs/                # Terminal logs + JSON state files
-    ├── tensorboard/         # TensorBoard event files
-    ├── predictions/         # Hasil inference
-    ├── evaluation/          # Metrics JSON + visualisasi
-    └── gradcam/             # Grad-CAM heatmaps
+│   ├── rsna-pneumonia-detection-challenge/  # Dataset DICOM RSNA
+│   └── lung_masks/                 # Masker paru-paru & ground truth pneumonia
+├── outputs/
+│   ├── checkpoints/                # Model terlatih (best_model.pth & latest_model.pth)
+│   ├── evaluation/                 # metrics.json & visualisasi evaluasi
+│   ├── gradcam/                    # Peta panas Grad-CAM
+│   ├── logs/                       # Log eksekusi terminal & JSON state tracker
+│   └── predictions/                # Hasil prediksi inferensi
+└── doc/
+    ├── skripsi.tex                 # Source naskah skripsi LaTeX
+    ├── skripsi.pdf                 # Hasil kompilasi skripsi PDF (123 halaman)
+    ├── Makefile                    # Automation build LaTeX PDF & Word
+    ├── references.bib              # Referensi bibliografi (Harvard style)
+    └── img/                        # Aset gambar & diagram naskah skripsi
 ```
 
-## Dataset
+---
 
-### RSNA Pneumonia Detection Challenge
+## ⚙️ Instalasi & Persiapan
 
-Dataset terdiri dari ~26,000 citra X-ray dada dalam format DICOM dengan anotasi bounding box untuk area pneumonia.
+### Prasyarat
+- **Python**: $\ge 3.10$
+- **GPU**: NVIDIA GPU (direkomendasikan $\ge 8$ GB VRAM, seperti RTX 3070 / T4)
+- **Paket Manager**: [UV](https://docs.astral.sh/uv/)
 
-### Precomputed Masks (`data/lung_masks/`)
-
-| Folder | Isi | Penggunaan |
-|--------|-----|------------|
-| `lung_segmentation/` | Binary mask paru-paru per pasien | Masking input image (pixel non-paru = 0) |
-| `pneumonia_ground_truth/` | Binary mask pneumonia per pasien | Ground truth training (lebih akurat dari bbox→mask) |
-| `test/` | Binary mask paru-paru untuk test images | Masking input saat inference |
-| `combined/` | Overlay lung + pneumonia | Referensi visualisasi |
-| `visualizations/` | Hasil visualisasi | Referensi visualisasi |
-
-**Dual Mask Approach**: Dataset class akan otomatis menggunakan precomputed pneumonia mask sebagai ground truth (override bbox→mask), dan lung segmentation mask untuk membatasi input hanya pada area paru-paru.
-
-### Auto Lung Segmentation (Fallback)
-
-Saat inference, jika precomputed lung mask tidak tersedia untuk suatu gambar, sistem secara otomatis menggunakan model **torchxrayvision PSPNet** untuk melakukan segmentasi paru-paru secara *on-the-fly*. Model ini mendeteksi 14 struktur anatomi dan mengekstrak mask Left Lung + Right Lung menjadi binary mask gabungan.
-
-Modul ini digunakan di:
-- `src/predict.py` — Inference via CLI
-- `app/gradio_app.py` — Inference via Web App
-- `src/explainability.py` — Grad-CAM generation
-
-## Setup
-
-### Prerequisites
-
-- Python >= 3.10
-- CUDA-capable GPU (recommended, min 8GB VRAM)
-- [UV](https://docs.astral.sh/uv/) package manager
-
-### Install Dependencies
+### Instalasi Dependensi
 
 ```bash
-# Install dengan UV
+# Clone repository
+git clone https://github.com/louiscalvin/pneumonia-segmentation-unet.git
+cd pneumonia-segmentation-unet
+
+# Sinkronkan virtual environment menggunakan UV
 uv sync
 
 # Aktifkan virtual environment
 source .venv/bin/activate
 ```
 
-## Penggunaan
+---
 
-### Precompute Lung Masks
+## 🚀 Panduan Penggunaan
 
-Sebelum training, generate lung mask untuk seluruh dataset menggunakan PSPNet (GPU-accelerated batch processing):
+### 1. Precompute Masker Paru & Ground Truth
+
+Sebelum melakukan pelatihan, generate masker paru-paru (*PSPNet*) dan masker *ground truth* pneumonia (dari anotasi *bounding box* RSNA):
 
 ```bash
-# Lung mask untuk training data
-uv run python -m scripts.precompute_lungmask \
-  --input data/rsna-pneumonia-detection-challenge/stage_2_train_images/ \
-  --output data/lung_masks/lung_segmentation/
-
-# Lung mask untuk test data
-uv run python -m scripts.precompute_lungmask \
-  --input data/rsna-pneumonia-detection-challenge/stage_2_test_images/ \
-  --output data/lung_masks/test/
-
-# Dengan batch processing dan visualisasi
-uv run python -m scripts.precompute_lungmask \
-  --input data/new_images/ --batch-size 16 --visualize
+# Generate seluruh masker (Lung Mask + Ground Truth + Visualisasi)
+uv run python -m scripts.precompute_all_masks --visualize
 ```
 
-Script ini mendukung resume otomatis (skip gambar yang sudah diproses).
-
-### Training
+### 2. Pelatihan Model (*Training*)
 
 ```bash
-# Training dari awal
+# Jalankan pelatihan menggunakan konfigurasi sentral
 uv run python -m src.train --config config.yaml
 
-# Via script
+# Atau menggunakan script bash
 ./scripts/train.sh
 ```
 
-Training akan otomatis:
-- Load precomputed pneumonia masks sebagai ground truth
-- Apply lung masking pada input
-- Freeze encoder selama 12 epoch pertama (warmup)
-- Menggunakan differential LR (encoder 8e-6, decoder 4e-4, faktor 0.02)
-- Cosine Annealing scheduler tanpa warmup spike (T_max = 100)
-- Menggunakan AMP (jika GPU tersedia)
-- Save best model ke `outputs/checkpoints/best_model.pth`
-- Save latest model ke `outputs/checkpoints/latest_model.pth` (untuk resume)
-- Log metrics ke TensorBoard di `outputs/tensorboard/`
-- Log terminal output ke `outputs/logs/train_*.log`
+- Bobot model terbaik (*best val Dice*) otomatis tersimpan di `outputs/checkpoints/best_model.pth`.
+- Checkpoint paling akhir untuk kelanjutan pelatihan tersimpan di `outputs/checkpoints/latest_model.pth`.
 
-### Checkpoint Strategy
-
-Training menyimpan dua checkpoint terpisah dengan fungsi berbeda:
-
-| Checkpoint | Kapan Disimpan | Fungsi |
-|------------|----------------|--------|
-| `best_model.pth` | Hanya saat val Dice meningkat | Evaluasi & inference (performa terbaik) |
-| `latest_model.pth` | Setiap akhir epoch | Resume training (state paling mutakhir) |
-
-> **Catatan**: Jika epoch terakhir juga merupakan best model, kedua file akan berisi model yang sama. Pemisahan ini memastikan `best_model.pth` tidak pernah tertimpa oleh epoch dengan performa lebih rendah.
-
-### Resume Training
-
-Jika training terputus (crash, listrik mati, dll), lanjutkan dari checkpoint terakhir:
+#### Melanjutkan Pelatihan (*Resume Training*)
 
 ```bash
-# Resume dari latest_model.pth (default)
+# Lanjutkan dari checkpoint terbaru secara otomatis
 uv run python -m src.train --config config.yaml --resume
-
-# Resume dari checkpoint spesifik
-uv run python -m src.train --config config.yaml --resume outputs/checkpoints/best_model.pth
 ```
 
-Resume akan merestore:
-- Model weights & optimizer state
-- Learning rate scheduler state
-- AMP scaler state
-- Epoch counter & best dice score
-- Early stopping counter
-- TensorBoard graph disambung tanpa putus
+### 3. Evaluasi Model
 
-#### Log Tracking (JSON State)
-
-Saat pertama kali training dimulai, sistem akan membuat file log baru dan mencatat path-nya di `outputs/logs/train_state.json`. Ketika `--resume` dijalankan, sistem membaca file JSON ini untuk mengetahui secara pasti file log mana yang harus dilanjutkan — sehingga semua output training (termasuk setelah beberapa kali resume) tetap berada dalam **satu file log yang sama**.
-
-```
-outputs/logs/
-├── train_20260610_143022.log    ← Satu file log untuk seluruh sesi training
-└── train_state.json             ← State tracker: {"current_log": "..."}
-```
-
-### Evaluasi
+Evaluasi performa model terbaik pada data validasi:
 
 ```bash
+uv run python -m src.evaluate --config config.yaml
+
+# Atau via script
 ./scripts/evaluate.sh
 ```
+Hasil evaluasi akan memperbarui berkas `outputs/evaluation/metrics.json`.
 
-Output:
-- `outputs/evaluation/metrics.json` — Semua metrics (Dice, IoU, dll)
-- `outputs/evaluation/evaluation_samples.png` — Visualisasi 16 sample random
+### 4. Inferensi Citra Rontgen (*Prediction*)
 
-### Inference
+Predict citra X-ray tunggal atau direktori:
 
-Single image:
 ```bash
-./scripts/predict.sh path/to/xray.dcm
+# Single image (DICOM / PNG / JPG)
+uv run python -m src.predict --config config.yaml --input data/sample.dcm
+
+# Batch directory
+uv run python -m src.predict --config config.yaml --input data/test_images/ --output outputs/predictions
 ```
 
-Batch directory:
+### 5. Generasi Grad-CAM Heatmap
+
 ```bash
-uv run python -m src.predict --config config.yaml \
-  --input path/to/images/ \
-  --output outputs/predictions
+uv run python -m src.explainability --config config.yaml --input data/sample.dcm --output outputs/gradcam
 ```
 
-Output per image:
-- `{name}_pred.png` — Binary prediction mask
-- `{name}_overlay.png` — Overlay merah pada area pneumonia
+### 6. Menjalankan Web Application (Gradio)
 
-> **Auto Lung Masking**: Saat inference, jika precomputed lung mask tidak tersedia, model torchxrayvision PSPNet akan otomatis melakukan segmentasi paru-paru secara *on-the-fly* sebelum prediksi pneumonia.
-
-### Grad-CAM Explainability
+Peluncuran antarmuka medis interaktif:
 
 ```bash
-uv run python -m src.explainability \
-  --config config.yaml \
-  --input path/to/xray.dcm \
-  --output outputs/gradcam
-```
+# Jalankan aplikasi Gradio
+uv run python -m app.gradio_app
 
-Output:
-- `{name}_gradcam.png` — Overlay Grad-CAM pada citra
-- `{name}_heatmap.png` — Heatmap raw
-
-### Web App (Gradio)
-
-```bash
+# Atau via script bash
 ./scripts/app.sh
 ```
+Aplikasi dapat diakses melalui peramban web di `http://localhost:7860`.
 
-Buka browser: http://localhost:7860
+---
 
-## Konfigurasi
+## 🎛️ Konfigurasi Utama (`config.yaml`)
 
-File `config.yaml` mengatur seluruh pipeline. Key configurations:
+| Parameter | Nilai Default | Deskripsi |
+|-----------|---------------|-----------|
+| `model.architecture` | `Unet` | Arsitektur dasar model segmentasi. |
+| `model.encoder_name` | `timm-efficientnet-b3` | *Backbone encoder* berbasis EfficientNet-B3. |
+| `model.decoder_attention_type` | `scse` | Modul atensi *Spatial and Channel Squeeze-and-Excitation*. |
+| `preprocessing.image_size` | `[512, 512]` | Resolusi input tensor citra rontgen. |
+| `training.batch_size` | `8` | Ukuran batch per langkah GPU. |
+| `training.accumulation_steps` | `4` | Akumulasi gradien (*effective batch size* = $8 \times 4 = 32$). |
+| `training.encoder_freeze_epochs` | `12` | Jumlah epoch awal dengan *encoder* dibekukan (*warmup* decoder). |
+| `training.early_stopping_patience` | `35` | Toleransi *early stopping* jika *val Dice* tidak meningkat. |
+| `optimizer.type` | `adamw` | Optimizer AdamW dengan L2 *weight decay* `5.0e-4`. |
+| `optimizer.lr` | `4.0e-4` | Laju belajar maksimum untuk *decoder*. |
+| `optimizer.encoder_lr_factor` | `0.02` | Faktor pengali laju belajar *encoder* (50x lebih lambat = `8.0e-6`). |
+| `scheduler.type` | `cosine_annealing` | Penurunan laju belajar harmonis hingga `1.0e-6`. |
+| `loss.type` | `unified_focal` | Gabungan *Focal Loss* ($w=0.5$) dan *Focal Tversky Loss* ($\alpha=0.3, \beta=0.7$). |
+| `inference.threshold` | `0.65` | Ambang batas nilai biner probabilistik piksel pneumonia. |
 
-| Section | Key | Default | Deskripsi |
-|---------|-----|---------|-----------|
-| `model` | `architecture` | Unet | Arsitektur model |
-| `model` | `encoder_name` | timm-efficientnet-b3 | Backbone encoder |
-| `model` | `decoder_attention_type` | scse | Attention: Spatial+Channel SE |
-| `preprocessing` | `image_size` | [512, 512] | Target resize |
-| `training` | `batch_size` | 4 | Batch size |
-| `training` | `accumulation_steps` | 8 | Gradient accumulation (effective batch = 32) |
-| `training` | `use_amp` | true | Mixed precision training |
-| `training` | `encoder_freeze_epochs` | 2 | Epoch freeze encoder (warmup) |
-| `training` | `early_stopping_patience` | 20 | Early stopping patience |
-| `loss` | `type` | dice_bce | Loss function (per-sample Dice + BCE) |
-| `loss` | `bce_weight` | 0.3 | Weight BCE dalam combo loss |
-| `loss` | `pos_weight` | 2.0 | Weight untuk class pneumonia |
-| `optimizer` | `type` | adamw | Optimizer |
-| `optimizer` | `lr` | 3e-4 | Learning rate (decoder); encoder = lr × 0.1 |
-| `optimizer` | `weight_decay` | 7e-4 | L2 regularization |
-| `scheduler` | `type` | one_cycle | LR scheduler dengan warmup |
+---
 
-### Data Augmentation
+## 📄 Kompilasi Naskah Skripsi (LaTeX)
 
-| Augmentation | Parameter | Deskripsi |
-|--------------|-----------|-----------|
-| HorizontalFlip | p=0.5 | Flip horizontal |
-| Affine | shift=0.1, scale=0.15, rotate=±15° | Geometric transforms |
-| ElasticTransform | α=120, σ=6, p=0.1 | Elastic deformation |
-| RandomBrightnessContrast | ±0.15, p=0.3 | Intensity variation |
-| CLAHE | clip_limit=2.0, p=0.3 | Contrast enhancement (radiology) |
-| GaussNoise | std=0.01-0.05, p=0.2 | Simulate imaging noise |
-| CoarseDropout | 1-4 holes, 20-60px, p=0.2 | Cutout regularization |
+Naskah lengkap skripsi berbasis LaTeX tersedia pada direktori `doc/`.
 
-## Metrik
+```bash
+cd doc
 
-Metrik dihitung **per-sample** untuk hasil yang akurat:
-
-| Metrik | Handling Sample Negatif | Deskripsi |
-|--------|------------------------|-----------|
-| **Dice** | Skip true negative (pred=0 ∧ target=0) | Overlap coefficient |
-| **IoU** | Skip true negative | Jaccard index |
-| **Precision** | Hitung false positive | Positive predictive value |
-| **Recall** | Hitung false negative | Sensitivity |
-| **Accuracy** | Hitung semua sample | Pixel-wise accuracy |
-| **Specificity** | Hitung semua sample | True negative rate |
-| **AUC** | Skip sample tanpa positif | Area under ROC curve (pixel-level) |
-
-> **Catatan**: False positive (model prediksi pneumonia di gambar normal) tetap dihitung dan dihukum (dice ≈ 0). Hanya true negative (pred=0 dan target=0) yang di-skip karena tidak informatif untuk kualitas segmentasi.
-
-## Hasil
-
-Metrics tersimpan di `outputs/evaluation/metrics.json`:
-
-```json
-{
-  "dice": 0.6234,
-  "iou": 0.5010,
-  "precision": 0.6868,
-  "recall": 0.7082,
-  "accuracy": 0.9509,
-  "specificity": 0.9781,
-  "auc": 0.9857
-}
+# Kompilasi naskah skripsi ke PDF
+make pdf
 ```
+Hasil kompilasi PDF akan dibuat di `doc/skripsi.pdf` (123 halaman).
 
-## Referensi
+---
+
+## 📚 Referensi Akademis
 
 ```bibtex
 @inproceedings{ronneberger2015unet,
@@ -364,19 +283,42 @@ Metrics tersimpan di `outputs/evaluation/metrics.json`:
   organization={Springer}
 }
 
-@inproceedings{rsna2018,
-  title={RSNA Pneumonia Detection Challenge},
-  organization={Radiological Society of North America},
+@article{roy2018scse,
+  title={Concurrent Spatial and Channel Squeeze \& Excitation in Fully Convolutional Networks},
+  author={Roy, Abhijit Guha and Navab, Nassir and Wachinger, Christian},
+  journal={IEEE Transactions on Medical Imaging},
+  volume={37},
+  number={10},
+  pages={2372--2384},
   year={2018}
 }
 
-@misc{cohen2022torchxrayvision,
-  title={TorchXRayVision: A library of chest X-ray datasets and models},
-  author={Cohen, Joseph Paul and Viviano, Joseph D. and Berber, Paul and Morrison, Paul and Torabian, Parsa and Guarber, Matteo and Lungren, Matthew P. and Chaudhari, Akshay and Brooks, Rupert and Hashir, Mohammad and Bertrand, Hadrien},
-  year={2022}
+@inproceedings{tan2019efficientnet,
+  title={EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks},
+  author={Tan, Mingxing and Le, Quoc},
+  booktitle={International Conference on Machine Learning (ICML)},
+  pages={6105--6114},
+  year={2019}
+}
+
+@inproceedings{selvaraju2017gradcam,
+  title={Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization},
+  author={Selvaraju, Ramprasaath R and Cogswell, Michael and Das, Abhishek and Vedantam, Ramakrishna and Parikh, Devi and Batra, Dhruv},
+  booktitle={IEEE International Conference on Computer Vision (ICCV)},
+  pages={618--626},
+  year={2017}
+}
+
+@misc{rsna2018pneumonia,
+  title={RSNA Pneumonia Detection Challenge},
+  author={{Radiological Society of North America}},
+  year={2018},
+  url={https://www.kaggle.com/c/rsna-pneumonia-detection-challenge}
 }
 ```
 
-## Disclaimer
+---
 
-Proyek ini untuk tujuan **edukasi dan penelitian** saja. Tidak untuk penggunaan klinis tanpa validasi dan persetujuan regulasi yang sesuai.
+## ⚠️ Penolakan Tanggung Jawab (*Disclaimer*)
+
+Sistem ini dikembangkan secara murni untuk tujuan **akademis, edukasi, dan penelitian**. Sistem ini berfungsi sebagai alat bantu skrining awal (*triase*) dan **tidak ditujukan untuk menggantikan peran, diagnosis klinis, atau keputusan akhir dari dokter spesialis radiologi**.

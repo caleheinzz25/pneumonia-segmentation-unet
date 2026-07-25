@@ -1,0 +1,67 @@
+@startuml arsitektur_unet
+skinparam backgroundColor white
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam rectangleBorderColor #333333
+skinparam arrowColor #333333
+
+title Arsitektur U-Net (Ronneberger et al., 2015)
+
+' === Left Column: Encoder ===
+rectangle "**Input Image**\n(H × W × C)" as input #E8F5E9
+rectangle "Conv 3×3 + ReLU\nConv 3×3 + ReLU\n(H × W × 64)" as enc1 #BBDEFB
+rectangle "Max Pool 2×2\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/2 × W/2 × 128)" as enc2 #90CAF9
+rectangle "Max Pool 2×2\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/4 × W/4 × 256)" as enc3 #64B5F6
+rectangle "Max Pool 2×2\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/8 × W/8 × 512)" as enc4 #42A5F5
+
+' === Center Bottom: Bottleneck ===
+rectangle "Max Pool 2×2\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/16 × W/16 × 1024)" as bottleneck #FFA726
+
+' === Right Column: Decoder ===
+rectangle "Up-Conv 2×2 + Concat\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/8 × W/8 × 512)" as dec4 #EF5350
+rectangle "Up-Conv 2×2 + Concat\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/4 × W/4 × 256)" as dec3 #EC407A
+rectangle "Up-Conv 2×2 + Concat\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H/2 × W/2 × 128)" as dec2 #AB47BC
+rectangle "Up-Conv 2×2 + Concat\nConv 3×3 + ReLU\nConv 3×3 + ReLU\n(H × W × 64)" as dec1 #CE93D8
+rectangle "Conv 1×1\n**Output Mask**\n(H × W × 1)" as output #E8F5E9
+
+' === Vertical Alignments / Hidden Links for Side-by-Side Grid ===
+input -[hidden]down-> enc1
+enc1 -[hidden]down-> enc2
+enc2 -[hidden]down-> enc3
+enc3 -[hidden]down-> enc4
+enc4 -[hidden]down-> bottleneck
+
+dec1 -[hidden]down-> dec2
+dec2 -[hidden]down-> dec3
+dec3 -[hidden]down-> dec4
+dec4 -[hidden]down-> output
+
+' === Align Level 1, 2, 3, 4 horizontally ===
+enc1 -[#2196F3,dashed]right-> dec1 : "Skip Connection"
+enc2 -[#2196F3,dashed]right-> dec2 : "Skip Connection"
+enc3 -[#2196F3,dashed]right-> dec3 : "Skip Connection"
+enc4 -[#2196F3,dashed]right-> dec4 : "Skip Connection"
+
+' === Flow Lines ===
+input --> enc1
+enc1 --> enc2
+enc2 --> enc3
+enc3 --> enc4
+enc4 --> bottleneck
+
+bottleneck -right-> dec4
+dec4 -up-> dec3
+dec3 -up-> dec2
+dec2 -up-> dec1
+dec1 --> output
+
+legend right
+  |= Warna |= Komponen |
+  | <#BBDEFB> | Encoder (Contracting Path) |
+  | <#FFA726> | Bottleneck |
+  | <#EF5350> | Decoder (Expanding Path) |
+  | <#2196F3> | Skip Connections |
+endlegend
+
+@enduml

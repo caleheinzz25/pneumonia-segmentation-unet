@@ -1,0 +1,376 @@
+% ============================================================================
+% BUKU PANDUAN PENGGUNAAN SISTEM (MANUAL BOOK)
+% Universitas Gunadarma
+%
+% Judul: BUKU PANDUAN PENGGUNAAN SISTEM DETEKSI AREA INFEKSI PNEUMONIA
+%        PADA CITRA RONTGEN DADA MENGGUNAKAN ARSITEKTUR U-NET DAN ATENSI sCSE
+%
+% Format Penulisan Sesuai Ketentuan Universitas Gunadarma:
+% - Font: Calibri / Sans-Serif (12pt)
+% - Margin: Atas 4cm, Kiri 4cm, Bawah 3cm, Kanan 3cm
+% - Spasi: 1.5
+% ============================================================================
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[indonesian]{babel}       % Bahasa Indonesia
+\usepackage{helvet}                % Helvetica / Sans-serif font
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{geometry}                % Page margins
+\geometry{
+    a4paper,
+    top        = 4cm,
+    left       = 4cm,
+    bottom     = 3cm,
+    right      = 3cm,
+    headheight = 14pt
+}
+
+\usepackage{setspace}                % Line spacing
+\onehalfspacing                      % 1.5 line spacing
+
+\usepackage{graphicx}                % Images
+\graphicspath{{../../doc/img/}{../img/}{img/}}
+
+\usepackage{booktabs}                % Tables
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+
+% --- Section Formatting -----------------------------------------------------
+\titleformat{\section}[block]
+    {\normalfont\large\bfseries\color{black}}
+    {\Roman{section}.}{0.8em}{}
+\titlespacing*{\section}{0pt}{18pt}{8pt}
+
+\titleformat{\subsection}[block]
+    {\normalfont\bfseries}
+    {\arabic{section}.\arabic{subsection}}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+\titleformat{\subsubsection}[block]
+    {\normalfont\bfseries\itshape}
+    {\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}{0.6em}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{4pt}
+
+% --- Listings Setup ---------------------------------------------------------
+\lstset{
+    basicstyle       = \ttfamily\small,
+    keywordstyle     = \color{black}\bfseries,
+    commentstyle     = \color{gray},
+    stringstyle      = \color{black},
+    breaklines       = true,
+    frame            = single,
+    backgroundcolor  = \color{gray!5},
+    numbers          = none,
+    showstringspaces = false,
+    tabsize          = 2
+}
+
+% --- Hyperlink Setup --------------------------------------------------------
+\hypersetup{
+    colorlinks  = true,
+    linkcolor   = black,
+    citecolor   = black,
+    urlcolor    = black
+}
+
+% --- Header/Footer ----------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small\itshape Buku Panduan Sistem Deteksi Pneumonia}
+\lhead{\small\itshape Universitas Gunadarma}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\begin{document}
+
+% ============================================================================
+% i. COVER
+% ============================================================================
+\thispagestyle{empty}
+\begin{center}
+    \vspace*{0.5cm}
+
+    {\fontsize{16pt}{20pt}\selectfont\bfseries BUKU PANDUAN PENGGUNAAN SISTEM\\[10pt]
+    DETEKSI AREA INFEKSI PNEUMONIA PADA CITRA RONTGEN DADA MENGGUNAKAN ARSITEKTUR U-NET DAN ATENSI sCSE\par}
+
+    \vspace{2.5cm}
+
+    % Logo Gunadarma
+    \includegraphics[width=5.5cm]{logo_gunadarma.png}
+
+    \vspace{2.5cm}
+
+    {\fontsize{12pt}{16pt}\selectfont
+    Dibuat oleh :\\[8pt]
+    \textbf{Muhammad Hisyam} (NPM: 51422075)\\[4pt]
+    \textbf{Dr. Tavipia Rumambi, SKom., MMSI.}\par}
+
+    \vspace{3cm}
+
+    {\fontsize{14pt}{18pt}\selectfont\bfseries
+    UNIVERSITAS GUNADARMA\\[4pt]
+    2026\par}
+\end{center}
+
+\newpage
+\setcounter{page}{1}
+
+% ============================================================================
+% ii. GAMBARAN UMUM APLIKASI
+% ============================================================================
+\section{Gambaran Umum Aplikasi}
+
+\subsection{Latar Belakang dan Tujuan Aplikasi}
+Pneumonia merupakan salah satu penyakit infeksi saluran pernapasan akut yang memiliki tingkat kematian tinggi, khususnya pada anak-anak, lansia, dan pasien dengan imunitas rendah. Diagnosis awal secara klinis umumnya mengandalkan pemeriksaan citra radiografi dada (\textit{Chest X-Ray}/CXR). Namun, proses pembacaan citra rontgen secara manual memerlukan keahlian spesialis radiologi dan memakan waktu, sehingga berisiko memperlambat penanganan medis di fasilitas kesehatan yang memiliki keterbatasan tenaga ahli.
+
+Aplikasi Web Deteksi Pneumonia ini dibangun sebagai alat bantu keputusan medis berbasis komputer (\textit{Computer-Aided Diagnosis}) yang memanfaatkan teknologi kecerdasan buatan (\textit{Deep Learning}). Aplikasi ini dirancang untuk melakukan deteksi dan segmentasi area infeksi pneumonia secara otomatis pada citra rontgen dada, menghitung estimasi derajat keparahan infeksi, menentukan lokasi sebaran (lateralitas), serta memberikan visualisasi transparansi keputusan model berbasis \textit{Explainable AI} (XAI).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth,height=0.4\textheight,keepaspectratio]{arsitektur_sistem.png}
+  \caption{Diagram Arsitektur Sistem Deteksi Pneumonia Modular.}
+  \label{fig:arsitektur_sistem}
+\end{figure}
+
+\subsection{Arsitektur dan Teknologi Inti}
+Aplikasi ini dikembangkan berbasis arsitektur modular yang terdiri dari empat komponen utama (Gambar~\ref{fig:arsitektur_sistem}):
+
+\begin{enumerate}
+    \item \textbf{Modul Pra-pemrosesan \& Segmentasi Paru-Paru (\textit{Lung Masking})}: Membaca berkas medis DICOM atau citra digital, melakukan penyesuaian kontras (CLAHE), dan secara otomatis memotong area organ paru-paru menggunakan model PSPNet dari pustaka \texttt{torchxrayvision}. Proses ini mengeliminasi bayangan organ di luar paru-paru, tulang rusuk luar, serta teks radiologi agar model utama tidak mengalami kegagalan generalisasi.
+    \item \textbf{Modul Segmentasi U-Net sCSE}: Menggunakan model jaringan saraf konvolusional arsitektur U-Net dengan mekanisme atensi \textit{Spatial and Channel Squeeze-and-Excitation} (sCSE) dan pengekstrak fitur (\textit{encoder}) \textit{EfficientNet-B3} yang dipra-latih pada ImageNet. Model dilatih menggunakan dataset \textit{RSNA Pneumonia Detection Challenge} dan fungsi kerugian \textit{Unified Focal Loss}.
+    \item \textbf{Modul Keterjelasan Model (\textit{Grad-CAM})}: Menghasilkan peta panas (\textit{heatmap}) gradien lokal berbasis \textit{Gradient-weighted Class Activation Mapping} untuk menunjukkan area mana yang menjadi fokus utama jaringan saraf dalam mendeteksi infeksi.
+    \item \textbf{Modul Antarmuka Web Gradio \& Cloudflare Tunnel}: Menyediakan antarmuka grafik interaktif yang mudah digunakan oleh tenaga medis, serta mendukung akses publik melalui koneksi terenkripsi Cloudflare Tunnel (\url{https://grad.mhisyam.com}).
+\end{enumerate}
+
+\subsection{Fitur-Fitur Utama Aplikasi}
+\begin{itemize}
+    \item \textbf{Dukungan Multi-Format Citra}: Menerima masukan berkas medis standar DICOM (\texttt{.dcm}) maupun berkas citra digital umum (\texttt{.png}, \texttt{.jpg}, \texttt{.jpeg}, \texttt{.bmp}, \texttt{.tif}, \texttt{.webp}).
+    \item \textbf{Kontrol Sensitivitas Threshold}: Slider ambang batas probabilitas ($0,1$ hingga $0,9$) yang dapat disesuaikan pengguna secara \textit{real-time}.
+    \item \textbf{Keluaran Visual Grid 2x2}: Menyajikan 4 tampilan visual terintegrasi sekaligus (A. Overlay Infeksi, B. Heatmap Grad-CAM, C. Masker Paru, dan D. Paru Terisolasi).
+    \item \textbf{Laporan Diagnosis Kuantitatif}:
+    \begin{itemize}
+        \item Status Diagnosis (NORMAL / PNEUMONIA).
+        \item Klasifikasi Derajat Keparahan (Normal, Ringan, Sedang, Berat, Kritis).
+        \item Estimasi Persentase Rasio Luas Infeksi (\%).
+        \item Analisis Lateralitas Lokasi Infeksi (Paru Kiri, Paru Kanan, atau Bilateral).
+        \item Nilai Rata-rata Tingkat Kepercayaan (\textit{Confidence Score}).
+    \end{itemize}
+    \item \textbf{Kecepatan Inferensi Tinggi}: Proses analisis dari pengunggahan hingga keluaran laporan hanya membutuhkan waktu \textbf{1--3 detik} per citra.
+\end{itemize}
+
+% ============================================================================
+% iii. KEBUTUHAN HARDWARE DAN SOFTWARE
+% ============================================================================
+\section{Kebutuhan Hardware dan Software}
+
+Untuk menjalankan dan mengakses aplikasi ini dengan optimal, berikut adalah spesifikasi perangkat keras (\textit{hardware}) dan perangkat lunak (\textit{software}) yang dibutuhkan:
+
+\subsection{Kebutuhan Server (Lingkungan Eksekusi Model)}
+Server bertindak sebagai mesin yang menampung model \textit{deep learning} dan melayani proses inferensi.
+
+\begin{table}[H]
+\centering
+\caption{Spesifikasi Kebutuhan Hardware Server}
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Komponen} & \textbf{Kebutuhan Minimum} & \textbf{Rekomendasi Terbaik} \\
+\midrule
+Prosesor (CPU) & Intel Core i5 / AMD Ryzen 5 (4 Core) & AMD Ryzen 7 5800H / Intel i7 (8 Core) \\
+Memori (RAM) & 16 GB DDR4 & 32 GB DDR4 \\
+Kartu Grafis (GPU) & NVIDIA GTX 1660 (6 GB VRAM) & NVIDIA RTX 3070 / RTX 3060 (8 GB VRAM) \\
+Penyimpanan & SSD 10 GB ruang kosong & NVMe SSD 20 GB ruang kosong \\
+Sistem Operasi & Ubuntu 22.04 LTS / Windows 10 & Linux CachyOS / Ubuntu 24.04 LTS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Spesifikasi Kebutuhan Software Server}
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Perangkat Lunak} & \textbf{Versi / Keterangan} \\
+\midrule
+Bahasa Pemrograman & Python 3.10 atau Python 3.11 \\
+Manajer Paket & \texttt{uv} (sangat direkomendasikan) atau \texttt{pip} \\
+Framework Deep Learning & PyTorch $\ge 2.4.0$ (dengan dukungan CUDA 12.x) \\
+Pustaka Segmentasi Medis & \texttt{segmentation-models-pytorch} (SMP) \\
+Pustaka Masking Paru & \texttt{torchxrayvision} (PSPNet) \\
+Pustaka Augmentasi & \texttt{albumentations} $\ge 1.4.0$ \\
+Pustaka Citra Medis & \texttt{pydicom}, \texttt{opencv-python}, \texttt{Pillow} \\
+Antarmuka UI & \texttt{gradio} $\ge 5.0.0$ \\
+Akses Publik & \texttt{cloudflared} (Cloudflare Tunnel CLI) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Kebutuhan Perangkat Pengguna (Client / Tenaga Medis)}
+Pengguna akhir (dokter, radiolog, atau perawat) dapat mengakses aplikasi web melalui perangkat desktop maupun seluler tanpa perlu menginstal aplikasi khusus.
+
+\begin{table}[H]
+\centering
+\caption{Spesifikasi Kebutuhan Pengguna (Client)}
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Komponen} & \textbf{Spesifikasi} \\
+\midrule
+Perangkat & Komputer PC, Laptop, Tablet, atau Smartphone \\
+Peramban Web (Browser) & Google Chrome, Mozilla Firefox, Microsoft Edge, atau Safari \\
+Koneksi Internet & Koneksi stabil (minimum 2 Mbps) \\
+Resolusi Layar & Minimum $1024 \times 768$ (Desktop) atau $360 \times 640$ (Mobile) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================================
+% iv. PETUNJUK INSTALASI
+% ============================================================================
+\section{Petunjuk Instalasi}
+
+Tahapan berikut menjelaskan langkah-langkah instalasi dan konfigurasi sistem pada lingkungan server lokal.
+
+\subsection{Langkah 1: Mengunduh Repositori Kode Sumber}
+Buka terminal/command prompt pada server, lalu kloning repositori proyek atau masuk ke folder proyek:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/louiscalvin/pneumonia-segmentation-unet.git
+cd pneumonia-segmentation-unet
+\end{lstlisting}
+
+\subsection{Langkah 2: Menyiapkan Lingkungan Virtual Python}
+Sangat disarankan menggunakan manajer paket cepat \texttt{uv} untuk mengisolasi dependensi Python:
+\begin{lstlisting}[language=bash]
+# Jika menggunakan uv (direkomendasikan):
+uv venv .venv
+source .venv/bin/activate   # Pada Linux/macOS
+# .venv\Scripts\activate    # Pada Windows
+
+# Atau jika menggunakan python venv bawaan:
+python3 -m venv .venv
+source .venv/bin/activate
+\end{lstlisting}
+
+\subsection{Langkah 3: Menginstal Dependensi Perangkat Lunak}
+Instal seluruh modul yang dibutuhkan sesuai berkas \texttt{pyproject.toml} atau \texttt{requirements.txt}:
+\begin{lstlisting}[language=bash]
+# Menggunakan uv:
+uv pip install -e .
+
+# Atau menggunakan pip:
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsection{Langkah 4: Menyiapkan Berkas Model Checkpoint}
+Pastikan berkas bobot model terbaik (\texttt{best\_model.pth}) telah diletakkan pada lokasi sesuai konfigurasi \texttt{config.yaml}:
+\begin{lstlisting}[language=bash]
+# Struktur direktori checkpoint:
+outputs/checkpoints/best_model.pth
+\end{lstlisting}
+
+\subsection{Langkah 5: Menjalankan Aplikasi Web Gradio}
+Jalankan skrip aplikasi web menggunakan perintah berikut:
+\begin{lstlisting}[language=bash]
+python app.py
+\end{lstlisting}
+Setelah perintah dijalankan, server akan menampilkan output di terminal:
+\begin{lstlisting}
+* Running on local URL:  http://0.0.0.0:7860
+* Model UNet sCSE loaded successfully from outputs/checkpoints/best_model.pth
+\end{lstlisting}
+
+\subsection{Langkah 6: Menjalankan Cloudflare Tunnel (Opsional untuk Akses Publik)}
+Jika aplikasi ingin diakses oleh pengguna dari luar jaringan lokal (internet publik), jalankan daemon \texttt{cloudflared}:
+\begin{lstlisting}[language=bash]
+cloudflared tunnel run --config cloudflared_config.json pneumonia-tunnel
+\end{lstlisting}
+Aplikasi web kini dapat diakses secara terenkripsi HTTPS melalui tautan publik: \url{https://grad.mhisyam.com}.
+
+% ============================================================================
+% v. PETUNJUK PENGGUNAAN
+% ============================================================================
+\section{Petunjuk Pengguna}
+
+Bagian ini memandu tenaga medis atau penguji dalam menggunakan antarmuka aplikasi web Gradio langkah demi langkah.
+
+\subsection{Tampilan Utama Antarmuka Aplikasi}
+Saat aplikasi web dibuka di peramban (browser), halaman utama menyajikan tata letak dua kolom yang bersih dan intuitif (Gambar~\ref{fig:implementasi_web_gradio}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{implementasi_web_gradio.png}
+  \caption{Tampilan Antarmuka Aplikasi Web Gradio Deteksi Pneumonia.}
+  \label{fig:implementasi_web_gradio}
+\end{figure}
+
+\subsection{Langkah-Langkah Penggunaan Aplikasi}
+
+\subsubsection{1. Membuka Alamat Aplikasi}
+Buka peramban web (Google Chrome/Firefox), lalu ketikkan alamat aplikasi:
+\begin{itemize}
+    \item Akses Lokal: \url{http://localhost:7860}
+    \item Akses Publik: \url{https://grad.mhisyam.com}
+\end{itemize}
+
+\subsubsection{2. Mengunggah Citra Rontgen Dada}
+Pada panel bagian kiri (\textbf{Masukan Citra \& Konfigurasi}):
+\begin{enumerate}
+    \item Klik area kotak pengunggahan file atau tarik-dan-lepas (\textit{drag and drop}) berkas citra rontgen dada dari komputer Anda.
+    \item Format berkas yang didukung mencakup berkas medis DICOM (\texttt{.dcm}) serta gambar standar (\texttt{.png}, \texttt{.jpg}, \texttt{.jpeg}, \texttt{.bmp}, \texttt{.tif}, \texttt{.webp}).
+    \item Sebagai alternatif cepat, Anda dapat mengklik salah satu contoh gambar rontgen bawaan yang tersedia di bawah panel masukan.
+\end{enumerate}
+
+\subsubsection{3. Mengatur Nilai Ambang Batas (\textit{Threshold})}
+Sesuaikan \textit{slider} \textbf{Threshold Deteksi} sesuai kebutuhan analisis:
+\begin{itemize}
+    \item Nilai bawaan (\textit{default}) disetel pada \textbf{0.65} (titik keseimbangan optimal antara Presisi dan Recall).
+    \item Geser ke kiri ($< 0.50$) jika ingin meningkatkan sensitivitas deteksi pada kasus bercak infeksi yang sangat tipis/samar.
+    \item Geser ke kanan ($> 0.80$) jika ingin memperketat kepresisian arsiran dan menekan alarm palsu.
+\end{itemize}
+
+\subsubsection{4. Menjalankan Proses Analisis}
+Klik tombol \textbf{"Analyze"} di bagian bawah panel masukan. Sistem akan memproses gambar melalui pipeline inferensi selama \textbf{1 hingga 3 detik}.
+
+\subsubsection{5. Mengamati Hasil Visualisasi Grid 2x2}
+Setelah pemrosesan selesai, panel bagian kanan akan memperbarui tampilan visual grid 2x2:
+\begin{enumerate}
+    \item \textbf{A. Overlay Infeksi (Atas Kiri)}: Menampilkan citra rontgen dada asli yang ditumpangi arsiran transparan berwarna merah pada lokasi piksel infeksi pneumonia.
+    \item \textbf{B. Heatmap Grad-CAM (Atas Kanan)}: Menampilkan peta panas (\textit{heatmap}) gradasi warna JET (merah = fokus perhatian utama model, biru = area netral).
+    \item \textbf{C. Masker Paru (Bawah Kiri)}: Menampilkan hasil isolasi organ paru-paru biner oleh PSPNet.
+    \item \textbf{D. Paru Terisolasi (Bawah Kanan)}: Menampilkan citra rontgen dada setelah membuang bagian luar organ paru-paru.
+\end{enumerate}
+
+\subsubsection{6. Membaca Laporan Ringkasan Kuantitatif}
+Pada bagian bawah panel kanan, baca laporan diagnosis ringkas yang disajikan oleh sistem:
+\begin{itemize}
+    \item \textbf{Status Diagnosis}: Menampilkan label \textbf{NORMAL} (hijau) atau \textbf{PNEUMONIA} (merah).
+    \item \textbf{Tingkat Keparahan}: Diklasifikasikan ke dalam 5 tingkatan:
+    \begin{itemize}
+        \item \textit{Normal}: Tidak ada lesi ($0\%$).
+        \item \textit{Ringan (Mild)}: Rasio infeksi $>0\%$ s.d. $5\%$.
+        \item \textit{Sedang (Moderate)}: Rasio infeksi $>5\%$ s.d. $15\%$.
+        \item \textit{Berat (Severe)}: Rasio infeksi $>15\%$ s.d. $30\%$.
+        \item \textit{Kritis (Critical)}: Rasio infeksi $>30\%$.
+    \end{itemize}
+    \item \textbf{Rasio Luas Infeksi}: Nilai persentase spesifik luas area terinfeksi terhadap total luas parenkim paru-paru.
+    \item \textbf{Lateralitas}: Mengidentifikasi lokasi sebaran lesi (\textit{Right-Sided} / Paru Kanan, \textit{Left-Sided} / Paru Kiri, atau \textit{Bilateral} / Kedua Paru).
+    \item \textbf{Confidence Score}: Rata-rata tingkat kepercayaan probabilitas piksel model.
+\end{itemize}
+
+\subsubsection{7. Mengulang atau Mengosongkan Layar}
+Klik tombol \textbf{"Clear"} untuk mengosongkan seluruh panel masukan dan luaran jika ingin melakukan analisis pada citra pasien baru.
+
+\subsection{Pernyataan Penyangkalan Medis (\textit{Medical Disclaimer})}
+Aplikasi ini dikembangkan untuk tujuan penelitian akademik dan berfungsi sebagai alat bantu skrining awal (\textit{Computer-Aided Diagnosis}). Seluruh hasil keluaran segmentasi dan laporan kuantitatif tidak dimaksudkan untuk menggantikan diagnosis akhir atau keputusan klinis resmi dari dokter spesialis radiologi profesional.
+
+\end{document}
