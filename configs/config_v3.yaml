@@ -1,7 +1,14 @@
 # ============================================================
-# Pneumonia Segmentation Config v2 — Current Production Model
-# Strategy: Prevent encoder forgetting + suppress false positives via Unified Focal Loss
-# Target Achieved: Val Dice = 0.6234, Specificity = 0.9781, Recall = 0.7082
+# Pneumonia Segmentation Config v3 — Next Experiment Setup
+# Goal: Target Dice >= 0.70 via EfficientNet-B4 & High-Precision Focal Tuning
+# Key Changes vs v2:
+# 1. encoder_name: timm-efficientnet-b3 -> timm-efficientnet-b4 (Higher capacity feature extractor)
+# 2. encoder_lr_factor: 0.02 -> 0.015 (66x slower encoder update to safeguard pretrained weights)
+# 3. loss.tversky_alpha: 0.3 -> 0.25, tversky_beta: 0.7 -> 0.75 (3.0x FP penalty vs FN)
+# 4. encoder_freeze_epochs: 12 -> 15 (extended decoder warmup phase)
+# 5. epochs: 100 -> 120, early_stopping_patience: 35 -> 40
+# 6. weight_decay: 5e-4 -> 6e-4 (stronger L2 regularization)
+# 7. inference.threshold: 0.65 -> 0.70 (sharper probability thresholding)
 # ============================================================
 
 # ------ Dataset Paths ------
@@ -14,7 +21,7 @@ data:
   mask_dir: "data/lung_masks/combined"
   lung_mask_dir: "data/lung_masks/lung_segmentation"
   test_lung_mask_dir: "data/lung_masks/test"
-  negative_ratio: 0.10
+  negative_ratio: 0.05
   rle_csv: null
 
 # ------ Preprocessing ------
@@ -33,7 +40,7 @@ preprocessing:
 # ------ Model ------
 model:
   architecture: "Unet"
-  encoder_name: "timm-efficientnet-b3"
+  encoder_name: "timm-efficientnet-b4"
   encoder_weights: "imagenet"
   in_channels: 3
   classes: 1
@@ -42,12 +49,12 @@ model:
   decoder_channels: [256, 128, 64, 32, 16]
   decoder_dropout: 0.2
   auxiliary_head: true
-  auxiliary_head_weight: 0.3
+  auxiliary_head_weight: 0.35
 
 # ------ Training ------
 training:
   batch_size: 8
-  epochs: 100
+  epochs: 120
   num_workers: 4
   pin_memory: true
   use_amp: true
@@ -58,11 +65,11 @@ training:
   k_folds: 1
   fold: 0
   stratified_split: true
-  early_stopping_patience: 35
-  encoder_freeze_epochs: 12
+  early_stopping_patience: 40
+  encoder_freeze_epochs: 15
   gradient_clip_val: 1.0
   use_ema: true
-  ema_decay: 0.999
+  ema_decay: 0.9995
   monitor_metric: "val_dice"
   monitor_mode: "max"
   save_top_k: 3
@@ -70,14 +77,14 @@ training:
 # ------ Optimizer ------
 optimizer:
   type: "adamw"
-  lr: 4.0e-4
-  weight_decay: 5.0e-4
-  encoder_lr_factor: 0.02
+  lr: 3.5e-4
+  weight_decay: 6.0e-4
+  encoder_lr_factor: 0.015
 
 # ------ Learning Rate Scheduler ------
 scheduler:
   type: "cosine_annealing"
-  cosine_t_max: 100
+  cosine_t_max: 120
   cosine_eta_min: 1.0e-6
   pct_start: 0.3
   div_factor: 25.0
@@ -89,10 +96,10 @@ scheduler:
 # ------ Loss Function ------
 loss:
   type: "unified_focal"
-  bce_weight: 0.5
-  tversky_alpha: 0.3
-  tversky_beta: 0.7
-  tversky_gamma: 0.75
+  bce_weight: 0.4
+  tversky_alpha: 0.25
+  tversky_beta: 0.75
+  tversky_gamma: 0.80
   pos_weight: 1.0
   focal_alpha: 0.25
   focal_gamma: 2.0
@@ -119,7 +126,7 @@ augmentation:
 # ------ Inference ------
 inference:
   model_path: "outputs/checkpoints/best_model.pth"
-  threshold: 0.65
+  threshold: 0.70
   use_tta: true
   tta_transforms: ["null", "hflip", "vflip"]
   tta_merge_mode: "mean"
@@ -148,7 +155,7 @@ app:
   host: "0.0.0.0"
   share: false
   title: "Deteksi & Lokalisasi Area Pneumonia pada Chest X-Ray"
-  description: "Unggah file Chest X-Ray (DICOM atau gambar standar) untuk melakukan deteksi dan lokalisasi wilayah infeksi pneumonia secara presisi berbasis Deep Learning (Attention U-Net dengan backbone EfficientNet-B3)."
+  description: "Aplikasi Web Deteksi Pneumonia berbasis Attention U-Net."
 
 # ------ Output / Logging ------
 output:

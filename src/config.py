@@ -88,8 +88,8 @@ class SchedulerConfig:
     reduce_factor: float
     reduce_patience: int
     reduce_min_lr: float
-    cosine_t_max: int
-    cosine_eta_min: float
+    cosine_t_max: int = 100
+    cosine_eta_min: float = 1e-6
     pct_start: float = 0.3
     div_factor: float = 25.0
     final_div_factor: float = 1e4

@@ -1,4 +1,4 @@
-# Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada Menggunakan Arsitektur U-Net dan Atensi sCSE
+# DETEKSI AREA INFEKSI PNEUMONIA PADA CITRA RONTGEN DADA MENGGUNAKAN ARSITEKTUR U-NET BERBASIS CONVOLUTIONAL NEURAL NETWORK (CNN)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.6+](https://img.shields.io/badge/PyTorch-2.6+-ee4c2c.svg)](https://pytorch.org/)
@@ -92,10 +92,15 @@ Model dievaluasi pada data validasi *RSNA Pneumonia Detection Challenge* (26.684
 
 ```
 .
-├── config.yaml                     # Berkas konfigurasi sentral eksperimen & model
+├── config.yaml                     # Berkas konfigurasi sentral (default: configs/config_v2.yaml)
+├── configs/                        # Direktori versi konfigurasi eksperimen
+│   ├── config_v1.yaml              # Model Baseline v1 (Dice+BCE, OneCycleLR)
+│   ├── config_v2.yaml              # Model Produksi v2 (Unified Focal, Cosine)
+│   ├── config_v3.yaml              # Model Eksperimen v3 (EfficientNet-B4, High-Precision Focal)
+│   └── README.md                   # Dokumentasi varian konfigurasi
 ├── pyproject.toml                  # Manajemen dependen berbasis UV
 ├── README.md                       # Dokumentasi utama proyek
-├── CODEBASE_NOTES.md               # Catatan arsitektur & keputusan teknis (v1 vs v2)
+├── CODEBASE_NOTES.md               # Catatan arsitektur & keputusan teknis (v1, v2, v3)
 ├── app/
 │   └── gradio_app.py               # Antarmuka web interaktif medis (Gradio)
 ├── src/

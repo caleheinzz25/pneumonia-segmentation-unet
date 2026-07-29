@@ -4,13 +4,16 @@ venv/
 env/
 .env
 
-# Data and Outputs
+# Data, Checkpoints & Outputs
 data/
 outputs/
 logs/
 checkpoints/
 
-# Python Cache
+# Documentation (Excluded completely as requested)
+doc/
+
+# Python Cache & Build Artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -28,45 +31,15 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Scratch & build files
+scratch/
+out/
 wa_chat.txt
 
 # Gradio cache
 .gradio/
 
-# Scratch & build files
-scratch/
-out/
-
-# Local configs
+# Local configs & Agent state
 cloudflared_config.json
 .agents/
-
-# Documentation build files (keep .tex, .bib, Makefile, img/, plantuml/ tracked)
-doc/**/*.pdf
-doc/**/*.docx
-doc/**/*.aux
-doc/**/*.log
-doc/**/*.toc
-doc/**/*.lof
-doc/**/*.lot
-doc/**/*.out
-doc/**/*.bbl
-doc/**/*.blg
-doc/**/*.bcf
-doc/**/*.run.xml
-doc/*.pdf
-doc/*.docx
-doc/*.aux
-doc/*.log
-doc/*.toc
-doc/*.lof
-doc/*.lot
-doc/*.out
-doc/*.bbl
-doc/*.blg
-doc/*.bcf
-doc/*.run.xml
-doc/skripsi/
-doc/refrence/
-doc/markitdown/
 .claude/

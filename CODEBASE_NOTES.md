@@ -10,7 +10,12 @@
 
 ```
 pneumonia-segmentation-unet/
-├── config.yaml              # Master config (all hyperparams in one place)
+├── config.yaml              # Master config (points to configs/config_v2.yaml)
+├── configs/                 # Experiment versions directory
+│   ├── config_v1.yaml       # Baseline model v1 (Dice+BCE, OneCycleLR)
+│   ├── config_v2.yaml       # Active Production model v2 (Unified Focal, Cosine)
+│   ├── config_v3.yaml       # Next Experiment v3 (EfficientNet-B4, High-Precision Focal)
+│   └── README.md            # Config versions documentation
 ├── app.py                   # Gradio app entrypoint (thin wrapper)
 ├── pyproject.toml           # Python deps & tool config (uv-managed)
 ├── Dockerfile               # Container: python:3.10-slim, exposes :7860
