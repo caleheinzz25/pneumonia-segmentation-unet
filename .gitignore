@@ -26,7 +26,13 @@ doc/**/*.snm
 doc/**/*.synctex.gz
 doc/markitdown/
 doc/refrence/
-doc/skripsi/
+doc/skripsi/*.pdf
+doc/skripsi/*.aux
+doc/skripsi/*.log
+doc/skripsi/*.bbl
+doc/skripsi/*.blg
+doc/skripsi/*.toc
+doc/skripsi/*.out
 
 # Python Cache & Build Artifacts
 __pycache__/

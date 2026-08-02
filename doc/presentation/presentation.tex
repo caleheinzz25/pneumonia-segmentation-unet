@@ -217,7 +217,7 @@
 \end{columns}
 \vspace{0.05cm}
 \begin{alertblock}{\footnotesize Sistem yang Dibangun}
-  \scriptsize Penelitian ini membangun sistem \textbf{CDSS} (\textit{Clinical Decision Support System}) berbasis U-Net + sCSE + EfficientNet-B3 mengikuti kerangka CRISP-DM, dilengkapi Grad-CAM dan antarmuka web Gradio yang dapat diakses via internet melalui Cloudflare Tunnel.
+  \scriptsize Penelitian ini membangun sistem \textbf{CAD} (\textit{Computer-Aided Detection}) berbasis U-Net + sCSE + EfficientNet-B3 mengikuti kerangka CRISP-DM, dilengkapi Grad-CAM dan antarmuka web Gradio yang dapat diakses via internet melalui Cloudflare Tunnel.
 \end{alertblock}
 \end{frame}
 
@@ -295,9 +295,9 @@
   \begin{column}{0.62\textwidth}
     \begin{block}{\footnotesize 6 Fase CRISP-DM pada Penelitian Ini}
       \begin{enumerate}\scriptsize
-        \item \textbf{Business Understanding}: Kebutuhan CDSS screening awal penunjang keputusan dokter.
+        \item \textbf{Business Understanding}: Kebutuhan sistem CAD sebagai alat bantu skrining awal penunjang keputusan dokter.
         \item \textbf{Data Understanding}: Dataset RSNA Pneumonia (26.684 CXR DICOM), analisis \textit{class imbalance}.
-        \item \textbf{Data Preparation}: Konversi DICOM ke PNG 8-bit, CLAHE enhancement, PSPNet Dual Lung Masking, augmentasi data (8 teknik).
+        \item \textbf{Data Preparation}: Konversi DICOM ke PNG 8-bit, PSPNet Dual Lung Masking, augmentasi data (8 teknik).
         \item \textbf{Modeling}: U-Net + EfficientNet-B3 + sCSE + Unified Focal Loss + pelatihan 2-fase (AdamW, AMP).
         \item \textbf{Evaluation}: Evaluasi kuantitatif (Dice 0,6234, Recall 0,7082) \& validasi visual Grad-CAM.
         \item \textbf{Deployment}: Gradio Web App 4-panel \& Cloudflare Tunnel (\texttt{grad.mhisyam.com}).
@@ -319,7 +319,7 @@
     \begin{block}{\footnotesize Rincian Tahapan Alur Penelitian}
       \begin{itemize}\scriptsize
         \item \textbf{Input Data}: Citra Rontgen Dada DICOM 16-bit dari RSNA Pneumonia Detection Challenge.
-        \item \textbf{Preprocessing}: Normalisasi Min-Max, kontras CLAHE, \& segmentasi ROI paru PSPNet.
+        \item \textbf{Preprocessing}: Normalisasi Min-Max \& segmentasi ROI paru PSPNet.
         \item \textbf{Augmentasi Data}: 8 teknik Albumentations (Rotation, Shift, Brightness, Noise, Dropout).
         \item \textbf{Training U-Net}: Optimizer AdamW, AMP FP16, Unified Focal Loss ($\alpha=0.5, \gamma=2.0$).
         \item \textbf{Evaluasi Model}: Pengujian pada data validasi 1.336 pasien (20\%) \& Confusion Matrix tingkat piksel.
@@ -348,7 +348,7 @@
     \includegraphics[height=3.2cm, keepaspectratio]{activity_diagram}
     \begin{block}{\footnotesize Activity Diagram Inferensi Medis}
       \begin{itemize}\tiny
-        \item \textbf{Alur Logika}: Input Rontgen $\rightarrow$ Preprocessing CLAHE \& PSPNet $\rightarrow$ Inferensi U-Net + sCSE $\rightarrow$ Generasi Heatmap Grad-CAM $\rightarrow$ Output 4-Panel \& Severity Report.
+        \item \textbf{Alur Logika}: Input Rontgen $\rightarrow$ Preprocessing PSPNet $\rightarrow$ Inferensi U-Net + sCSE $\rightarrow$ Generasi Heatmap Grad-CAM $\rightarrow$ Output 4-Panel \& Severity Report.
       \end{itemize}
     \end{block}
   \end{column}
@@ -374,7 +374,6 @@
     \begin{block}{\footnotesize Preprocessing \& Dual Lung Masking}
       \begin{itemize}\scriptsize
         \item \textbf{16-bit ke 8-bit}: Normalisasi Min-Max $[0, 255]$ \& resize $512 \times 512$.
-        \item \textbf{CLAHE}: Peningkatan kontras lokal (\texttt{clip\_limit=2.0}, tile $8 \times 8$).
         \item \textbf{PSPNet Dual Lung Masking}: Memotong ROI paru kiri \& kanan, mengeliminasi teks DICOM, kabel EKG, \& penanda L/R.
         \item \textbf{8 Augmentasi}: Horizontal Flip, Shift-Scale-Rotate, Gamma, Noise, Coarse/Grid Dropout.
       \end{itemize}

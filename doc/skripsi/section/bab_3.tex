@@ -1,0 +1,653 @@
+% ============================================================
+% SKRIPSI - Universitas Gunadarma
+% Program Studi Informatika
+% Format sesuai Buku Pedoman Penulisan Skripsi Prodi Informatika 2025
+%
+% Judul: Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada Menggunakan Arsitektur U-Net Berbasis Convolutional Neural Network (CNN)
+% ============================================================
+
+\documentclass[12pt,a4paper,oneside]{book}
+
+% ---------- Encoding & Font ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}           % Times New Roman
+\usepackage{courier}         % Courier New for code
+
+% ---------- Bahasa Indonesia ----------
+\usepackage[indonesian]{babel}
+
+% ---------- Layout: A4, margins 4-3-4-3 ----------
+\usepackage[
+  a4paper,
+  top     = 4cm,
+  bottom  = 3cm,
+  left    = 4cm,
+  right   = 3cm,
+  headheight = 15pt
+]{geometry}
+
+% ---------- Spacing: 1.5 untuk isi ----------
+\usepackage{setspace}
+\setstretch{1.5}
+
+% ---------- Paragraph ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% ---------- Graphics & Figures ----------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+
+% ---------- Tables & Math ----------
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+% ---------- Harvard Referencing ----------
+\usepackage[backend=biber,style=authoryear,sorting=nyt,maxcitenames=99,giveninits=false,
+  uniquename=false,uniquelist=false,language=english]{biblatex}
+\addbibresource{../references.bib}
+
+% Redefine to use "dan" instead of "&" to match the guidelines
+\renewcommand*{\finalnamedelim}{\addspace dan\space}
+\renewcommand*{\nameyeardelim}{\addcomma\space}
+\DeclareLanguageMapping{indonesian}{english}
+\DefineBibliographyStrings{english}{
+  andothers = {{dkk.}{dkk.}},
+}
+
+% ---------- Captions ----------
+\usepackage{caption}
+\captionsetup{
+  font=normalsize,
+  labelfont=bf,
+  justification=centering,
+  labelsep=period
+}
+
+\renewcommand{\thesection}{\thechapter.\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+
+% ---------- Hyperlinks ----------
+\usepackage[hidelinks]{hyperref}
+
+% ---------- Fancy Header ----------
+\usepackage{fancyhdr}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+\fancypagestyle{body}{
+  \fancyhf{}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% ---------- Chapter & Section Formatting ----------
+\usepackage{titlesec}
+
+\titleformat{\chapter}[block]
+  {\centering\bfseries\fontsize{14pt}{14pt}\selectfont}
+  {\thechapter.}{0.5em}
+  {\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{2\baselineskip}
+
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesection.}{1em}{}
+\titlespacing*{\section}{0pt}{1.5\baselineskip}{0.5\baselineskip}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsection.}{1em}{}
+\titlespacing*{\subsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsubsection.}{1em}{}
+\titlespacing*{\subsubsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% ---------- DOCUMENT ----------
+\begin{document}
+\pagestyle{body}
+\graphicspath{{../img/}{../../doc/img/}{img/}}
+
+\setcounter{chapter}{2}
+\chapter[METODE PENELITIAN]{Metode Penelitian}
+
+\section{Metode Penelitian: CRISP-DM}
+
+Penelitian ini menggunakan kerangka kerja \textbf{CRISP-DM} (\textit{Cross-Industry Standard Process for Data Mining}) sebagai panduan sistematis untuk menyelesaikan setiap tahapan penelitian. CRISP-DM adalah metodologi standar yang banyak digunakan baik di dunia industri maupun akademik untuk mengelola proyek berbasis data, \textit{machine learning}, dan kecerdasan buatan. Metodologi ini dipilih karena alur kerjanya yang fleksibel, dapat diulang kembali (\textit{iteratif}), serta berorientasi pada tujuan akhir (dalam kasus ini: membantu tugas diagnosis klinis dokter).
+
+CRISP-DM terdiri dari enam fase utama yang saling berhubungan dan tidak selalu kaku harus berurutan, seperti yang ditunjukkan pada Gambar \ref{fig:crisp_dm}. Jika ada temuan baru pada suatu tahapan, peneliti dapat kembali ke tahapan sebelumnya untuk melakukan perbaikan.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.55\textwidth,height=0.4\textheight,keepaspectratio]{img/crisp_dm.png}
+  \caption{Diagram Siklus Metodologi CRISP-DM (\textit{Cross-Industry Standard Process for Data Mining}).}
+  \label{fig:crisp_dm}
+\end{figure}
+
+Berikut adalah penerapan keenam fase CRISP-DM dalam penelitian deteksi pneumonia ini:
+
+\subsection{Fase 1: Pemahaman Bisnis (\textit{Business Understanding})}
+
+Tahap pertama berfokus pada pemahaman masalah utama yang ingin diselesaikan. Masalah yang diangkat adalah tingginya angka fatalitas akibat pneumonia karena keterlambatan pembacaan hasil foto rontgen dada, terutama di fasilitas kesehatan yang minim dokter radiolog. Tujuan akhir dari penelitian ini adalah membuat alat bantu berbasis komputer (\textit{Computer-Aided Diagnosis}) yang bisa mensegmentasi area pneumonia secara otomatis dengan cepat, akurat, dan hasilnya mudah dipahami dokter.
+
+\subsection{Fase 2: Pemahaman Data (\textit{Data Understanding})}
+
+Pada tahap kedua, dilakukan analisis mendalam terhadap data rontgen yang akan dipakai. Dataset \textit{RSNA Pneumonia Detection Challenge} dipilih karena merupakan salah satu dataset foto rontgen paru terbesar yang tersedia gratis dan sudah diberi label oleh dokter spesialis. Langkah-langkah pada tahap ini meliputi:
+\begin{itemize}
+  \item Mempelajari cara membaca file format medis (DICOM) beserta data tambahan di dalamnya.
+  \item Menganalisis ketimpangan jumlah data, di mana data pneumonia positif hanya 22,5\% sedangkan sisanya non-pneumonia (77,5\%).
+  \item Mengetahui bahwa tanda area infeksi dari dataset ini masih berupa koordinat kotak (\textit{bounding box}), bukan gambar arsiran (\textit{masker}) piksel.
+  \item Mengidentifikasi gangguan pada gambar (seperti kabel medis, tulang selangka, atau tulisan teks) yang harus dibersihkan nanti.
+\end{itemize}
+
+\subsection{Fase 3: Persiapan Data (\textit{Data Preparation})}
+
+Tahap ketiga adalah bagian yang paling banyak memakan waktu, yaitu mengolah gambar mentah agar siap dimasukkan ke model pelatihan. Prosesnya meliputi:
+\begin{itemize}
+  \item \textbf{Ekstraksi DICOM}: Membuka berkas DICOM untuk mengambil data gambar asli menggunakan library \textit{pydicom}.
+  \item \textbf{Normalisasi dan Resizing}: Mengubah ukuran semua gambar rontgen menjadi seragam (512$\times$512 piksel) dan menstandarkan rentang nilai warna piksel menjadi $[0, 1]$.
+  \item \textbf{Lung Masking}: Memotong gambar agar hanya menampilkan area paru-paru menggunakan model PSPNet dari library \textit{torchxrayvision} agar model tidak terganggu gambar di luar paru.
+  \item \textbf{Pembuatan Masker Ground Truth}: Mengubah koordinat kotak pembatas (\textit{bounding box}) bawaan RSNA menjadi masker biner piksel-per-piksel.
+  \item \textbf{Augmentasi Data}: Menggunakan library \textit{Albumentations} untuk memutar, menggeser, dan mengubah kontras gambar secara acak agar variasi data latih bertambah.
+  \item \textbf{Normalisasi ImageNet}: Menyesuaikan warna gambar dengan standar model EfficientNet yang dilatih menggunakan dataset ImageNet.
+\end{itemize}
+
+\subsection{Fase 4: Pemodelan (\textit{Modeling})}
+
+Pada tahap keempat, dirancang arsitektur model kecerdasan buatan untuk segmentasi pneumonia. Aktivitas utamanya meliputi:
+\begin{itemize}
+  \item \textbf{Arsitektur Model}: Menggunakan U-Net dasar yang dipadukan dengan modul atensi sCSE agar model bisa fokus mencari area infeksi.
+  \item \textbf{Backbone Encoder}: Memilih \textit{EfficientNet-B3} yang sudah terlatih ImageNet sebagai pengekstraksi fitur gambar.
+  \item \textbf{Fungsi Kerugian}: Menggunakan \textit{Unified Focal Loss} untuk mengatasi masalah ketimpangan jumlah data positif dan negatif agar model tidak malas mendeteksi pneumonia.
+  \item \textbf{Strategi Latih}: Menerapkan dua tahap pelatihan, yaitu membekukan \textit{encoder} selama 12 epoch awal untuk adaptasi \textit{decoder}, lalu melatih seluruh jaringan secara penuh menggunakan laju belajar yang disesuaikan secara dinamis (\textit{Cosine Annealing}).
+\end{itemize}
+
+\subsection{Fase 5: Evaluasi (\textit{Evaluation})}
+
+Tahap kelima adalah menguji model yang sudah dilatih. Pengujian dilakukan secara kuantitatif memakai tiga metrik utama: \textit{Precision}, \textit{Recall}, dan \textit{Specificity}. Selain itu, dilakukan pengujian kualitatif dengan memeriksa kecocokan area arsir prediksi secara visual serta melihat peta panas Grad-CAM untuk memastikan model memang fokus melihat area paru-paru yang sakit.
+
+\subsection{Fase 6: Penerapan (\textit{Deployment})}
+
+Fase terakhir adalah menyajikan model terbaik agar bisa digunakan oleh dokter secara nyata. Model dikemas dalam bentuk aplikasi web prototipe memakai \textbf{Gradio}. Aplikasi ini dirancang agar dokter cukup mengunggah foto rontgen dada (format DICOM, PNG, atau JPEG) ke browser, lalu sistem akan otomatis menampilkan area pneumonia, peta panas Grad-CAM, perkiraan tingkat keparahan, serta statistik kepercayaan prediksi model.
+
+\section{Alur Penelitian}
+
+Alur penelitian ini dirancang secara berurutan mulai dari awal pengumpulan data hingga pembuatan aplikasi web. Secara garis besar, alur kerja dimulai dari mengumpulkan dataset, melakukan pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), melatih model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), mengevaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, membuat visualisasi Grad-CAM, hingga terakhir membungkusnya ke dalam web Gradio.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth,height=0.45\textheight,keepaspectratio]{img/flowchart_penelitian.png}
+  \caption{Alur Penelitian Deteksi Pneumonia.}
+  \label{fig:flowchart_penelitian}
+\end{figure}
+
+\section{Arsitektur Sistem Keseluruhan}
+
+Sistem deteksi pneumonia yang dibangun bekerja sebagai sebuah rangkaian proses modular. Ketika pengguna mengunggah citra rontgen dada, gambar tersebut akan diproses melalui empat modul berikut secara berurutan:
+
+\begin{enumerate}
+  \item \textbf{Modul Pra-pemrosesan}: Membaca file DICOM rontgen dada, merapikan ukuran dan kontras gambar, lalu memotong gambar memakai PSPNet agar menyisakan area paru-paru saja.
+  \item \textbf{Modul Segmentasi}: Memprediksi area pneumonia piksel-per-piksel menggunakan model U-Net sCSE dengan \textit{backbone} EfficientNet-B3.
+  \item \textbf{Modul Keterjelasan (XAI)}: Membuat peta panas Grad-CAM dari lapisan konvolusi terakhir untuk mendeteksi area fokus keputusan model.
+  \item \textbf{Modul Analisis \& UI}: Menghitung persentase keparahan infeksi, menentukan sisi paru yang sakit (kiri, kanan, atau bilateral), lalu menampilkan hasilnya di web Gradio.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth,height=0.35\textheight,keepaspectratio]{img/arsitektur_sistem.png}
+  \caption{Diagram Arsitektur Sistem Deteksi Pneumonia secara Keseluruhan.}
+  \label{fig:arsitektur_sistem}
+\end{figure}
+
+\section{Pemodelan UML Sistem}
+
+Untuk memodelkan rancangan interaksi aktor dengan sistem serta mendokumentasikan alur logika program secara sistematis, dirancang diagram pemodelan menggunakan konsep \textit{Unified Modeling Language} (UML), yang meliputi \textit{Use Case Diagram} dan \textit{Activity Diagram}.
+
+\subsection{\textit{Use Case Diagram} Antarmuka Web}
+
+\textit{Use Case Diagram} menggambarkan fungsionalitas sistem yang ditawarkan oleh aplikasi dari sudut pandang interaksi antara aktor (pengguna akhir) dengan sistem. Dalam sistem ini, aktor utamanya adalah tenaga medis (dokter umum, dokter spesialis radiologi, atau perawat) yang menggunakan aplikasi web Gradio untuk menganalisis pneumonia. Rancangan diagram ini disajikan pada Gambar \ref{fig:use_case_diagram}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth,height=0.4\textheight,keepaspectratio]{img/use_case_diagram.png}
+  \caption{Use Case Diagram Interaksi Tenaga Medis dengan Aplikasi Web Gradio.}
+  \label{fig:use_case_diagram}
+\end{figure}
+
+Berdasarkan Gambar \ref{fig:use_case_diagram}, terdapat 6 fungsi utama (\textit{use cases}) yang dapat diakses oleh Tenaga Medis:
+\begin{enumerate}
+  \item \textbf{UC1: Unggah Citra Rontgen Dada}: Tenaga medis dapat mengunggah citra medis berformat DICOM (\texttt{.dcm}) maupun gambar digital standar (.png, .jpg, .jpeg) pada panel input.
+  \item \textbf{UC2: Atur Nilai Ambang Batas (Threshold)}: Menggeser pengatur slider nilai ambang batas probabilitas (rentang 0,1 hingga 0,9) untuk memfilter tingkat kepekaan arsiran deteksi.
+  \item \textbf{UC3: Lakukan Analisis Deteksi}: Menjalankan tombol interaksi untuk melakukan inferensi model segmentasi paru-paru (PSPNet) dan model utama (U-Net sCSE).
+  \item \textbf{UC4: Visualisasi Hasil Segmentasi \& Heatmap}: Menampilkan gambar rontgen bertumpuk arsiran merah pneumonia serta visualisasi sebaran fokus model berbasis Grad-CAM secara visual.
+  \item \textbf{UC5: Lihat Analisis Keparahan \& Letak Lateralitas}: Meninjau laporan diagnosis berupa rasio persentase luas infeksi, derajat keparahan (5 tingkat), letak lateralitas sebaran infeksi, dan nilai kepercayaan rata-rata.
+  \item \textbf{UC6: Reset Tampilan (Clear)}: Mengosongkan panel input dan output untuk mengembalikan kondisi aplikasi ke keadaan awal.
+\end{enumerate}
+
+\subsection{\textit{Activity Diagram} Alur Deteksi Sistem}
+
+\textit{Activity Diagram} memodelkan alur kerja logika dan urutan aktivitas proses bisnis di dalam sistem mulai dari inisiasi masukan hingga luaran akhir. Diagram ini menunjukkan bagaimana data citra mengalir secara modular dari tindakan aktor ke pemrosesan otomatis model kecerdasan buatan. Alur logika tersebut disajikan pada Gambar \ref{fig:activity_diagram}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth,height=0.55\textheight,keepaspectratio]{img/activity_diagram.png}
+  \caption{Activity Diagram Alur Proses Inferensi dan Analisis Sistem Deteksi Pneumonia.}
+  \label{fig:activity_diagram}
+\end{figure}
+
+Penjelasan rincian tahapan aktivitas berdasarkan Gambar \ref{fig:activity_diagram} adalah sebagai berikut:
+\begin{enumerate}
+  \item \textbf{Inisiasi Aktivitas}: Tenaga medis mengunggah file citra rontgen dada ke panel Gradio.
+  \item \textbf{Pra-pemrosesan Paru}: Sistem memuat citra dan melakukan pemanggilan model PSPNet untuk mendeteksi koordinat area organ paru-paru kiri dan kanan.
+  \item \textbf{Pencabangan Kondisi (Decision)}: 
+  \begin{itemize}
+    \item Jika masker organ paru berhasil dihasilkan, sistem mengalikan masker biner tersebut dengan citra asli (\textit{element-wise multiplication}) untuk memotong latar belakang luar rontgen (\textit{Lung Masking}).
+    \item Jika gagal (misalnya karena anatomi paru tidak utuh atau citra terlalu bising), sistem akan menggunakan citra asli tanpa pemotongan sebagai \textit{fallback} pertahanan komputasi.
+  \end{itemize}
+  \item \textbf{Proses Segmentasi}: Citra masukan yang telah disaring dilewatkan ke model utama U-Net dengan atensi sCSE untuk memprediksi probabilitas pneumonia tingkat piksel. Nilai ambang batas 0,65 diterapkan untuk menyaring piksel positif pneumonia.
+  \item \textbf{Analisis Tambahan}: Secara paralel, sistem menghitung visualisasi gradien lokal untuk menghasilkan heatmap Grad-CAM, serta menghitung rasio piksel terarsir pneumonia terhadap luas paru-paru untuk klasifikasi keparahan dan lateralitas.
+  \item \textbf{Penyajian Hasil}: Sistem mengirimkan dan merender seluruh hasil visualisasi (\textit{overlay}, Grad-CAM) dan data laporan ke layar antarmuka pengguna web Gradio.
+\end{enumerate}
+
+\section{Dataset dan Pengumpulan Data}
+
+\subsection{Deskripsi Dataset RSNA}
+
+Dataset yang digunakan dalam penelitian ini adalah \textit{RSNA Pneumonia Detection Challenge Dataset} yang dipublikasikan oleh \textit{Radiological Society of North America} (RSNA) pada tahun 2018 melalui platform kompetisi Kaggle. Dataset ini merupakan salah satu himpunan data citra radiologi medis paru-paru terbesar dan paling umum digunakan dalam penelitian segmentasi pneumonia (Seth et al., 2022). Dataset ini terdiri atas total 26.684 citra rontgen dada untuk pelatihan, yang seluruhnya disimpan dalam format standar medis \textit{Digital Imaging and Communications in Medicine} (DICOM). Setiap berkas DICOM tidak hanya menyimpan data piksel citra, tetapi juga mengandung metadata klinis yang kaya seperti informasi pasien, parameter akuisisi, dan modalitas alat pemindai.
+
+Anotasi pada dataset ini disediakan oleh tim dokter radiologi dari RSNA dan dilengkapi melalui kolaborasi dengan Kaggle. Setiap citra diberikan label kelas pada berkas CSV terpisah yang memuat informasi mengenai status pneumonia pasien. Khusus untuk citra yang didiagnosis mengandung opasitas paru-paru (\textit{lung opacity}), disediakan pula koordinat kotak pembatas (\textit{bounding box}) berformat $(x, y, \textit{width}, \textit{height})$ yang menandai lokasi spesifik konsolidasi atau \textit{Ground-Glass Opacities} (GGO) pneumonia yang diidentifikasi oleh radiolog.
+
+\subsection{Distribusi dan Statistik Dataset}
+
+Dataset RSNA memiliki karakteristik distribusi kelas yang tidak merata (\textit{class imbalance}). Berdasarkan anotasi yang tersedia, pembagian kelas pada dataset pelatihan adalah sebagai berikut:
+
+\begin{table}[H]
+  \centering
+  \caption{Distribusi Kelas Dataset RSNA Pneumonia Detection Challenge.}
+  \label{tab:distribusi_dataset}
+  \begin{tabular}{l c c}
+    \toprule
+    \textbf{Kelas} & \textbf{Jumlah Citra} & \textbf{Persentase} \\
+    \midrule
+    \textit{Lung Opacity} (Pneumonia Positif) & 6.012  & 22,5\% \\
+    \textit{No Lung Opacity / Not Normal}     & 7.210  & 27,1\% \\
+    \textit{Normal}                            & 13.462 & 50,4\% \\
+    \midrule
+    \textbf{Total}                             & \textbf{26.684} & \textbf{100\%} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Ketidakseimbangan kelas yang signifikan ini, di mana hanya sekitar 22,5\% citra mengandung pneumonia, menjadi salah satu tantangan utama yang dihadapi dalam penelitian ini. Ketidakseimbangan ini diatasi secara eksplisit melalui pemilihan fungsi kerugian yang sensitif terhadap kelas minoritas (Unified Focal Loss) serta melalui skema sampling stratifikasi pada saat pembagian dataset latih dan validasi.
+
+\subsection{Pembagian Dataset}
+
+Dataset dibagi menjadi dua subset utama menggunakan metode \textit{stratified split} dengan rasio 80:20, yaitu 80\% data untuk pelatihan dan 20\% untuk validasi. Rasio 80:20 ini dipilih berdasarkan praktik terbaik (*best practice*) dalam literatur empiris pembelajaran mesin yang merujuk pada prinsip Pareto. Proporsi ini dinilai optimal karena memberikan alokasi data latih yang cukup besar (80\%) agar model dapat mempelajari representasi fitur visual pneumonia secara komprehensif, sekaligus menyisakan alokasi data uji yang representatif (20\%) untuk mengevaluasi kemampuan generalisasi model secara stabil dan valid secara statistik. Penggunaan \textit{stratified split} memastikan bahwa proporsi kelas antara subset pelatihan dan validasi terjaga sama persis seperti distribusi aslinya, sehingga menghindari bias pada proses evaluasi. Pembagian dilakukan pada tingkat \textit{patient ID} (bukan per citra individu) untuk mencegah kebocoran informasi (\textit{data leakage}) antar-subset.
+
+\section{Pra-pemrosesan Citra}
+
+Pra-pemrosesan citra merupakan tahapan kritis yang bertujuan menstandarkan format, kualitas visual, dan ruang domain informasi dari citra masukan sebelum digunakan dalam proses pelatihan maupun inferensi. Tahapan pra-pemrosesan yang diimplementasikan dalam penelitian ini dirancang secara modular dan mencakup beberapa sub-tahapan berikut:
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth,height=0.4\textheight,keepaspectratio]{img/pipeline_preprocessing.png}
+  \caption{Pipeline Pra-pemrosesan Citra DICOM hingga Tensor Siap-latih.}
+  \label{fig:pipeline_preprocessing}
+\end{figure}
+
+\subsection{Ekstraksi Array dari Berkas DICOM}
+
+Berkas citra medis yang diperoleh dari dataset RSNA disimpan dalam format standar internasional DICOM (\textit{Digital Imaging and Communications in Medicine}). Format ini tidak hanya menyimpan data piksel citra dalam representasi \textit{integer} 16-bit (uint16 atau int16), namun juga mengandung metadata klinis yang terenkapsulasi seperti nama pasien, tanggal pemeriksaan, parameter kV dan mAs mesin rontgen, serta lainnya. Menggunakan pustaka \textit{pydicom}, berkas DICOM dibaca dan metadata dipisahkan dari data piksel. Data piksel mentah kemudian diekstrak sebagai matriks numerik \textit{NumPy} dua dimensi yang menyimpan nilai intensitas radiasi mentah.
+
+\subsection{Normalisasi Intensitas Piksel dan Penyesuaian Ukuran}
+
+Citra radiografi dada asli umumnya memiliki dimensi spasial yang bervariasi (sekitar 1.024 $\times$ 1.024 piksel) dan rentang nilai intensitas piksel yang tidak seragam antar-citra akibat perbedaan pengaturan mesin rontgen. Untuk mengurangi beban komputasi tanpa kehilangan fitur diagnostik yang signifikan, dilakukan penyesuaian ukuran (\textit{resizing}) citra ke dimensi target \textbf{512 $\times$ 512 piksel} menggunakan metode interpolasi bilinear.
+
+Selanjutnya, diterapkan normalisasi \textit{min-max} untuk mentransformasikan rentang nilai intensitas piksel dari nilai dinamisnya menjadi skala seragam antara $[0, 1]$. Setelah normalisasi, citra grayscale (1 kanal) diduplikasi menjadi citra 3 kanal RGB semu. Hal ini dilakukan agar format tensor sesuai dengan persyaratan arsitektur \textit{EfficientNet-B3} yang dilatih menggunakan dataset ImageNet yang menggunakan citra 3 kanal. Sebagai langkah akhir, dilakukan normalisasi standar ImageNet (mean $= [0.485, 0.456, 0.406]$, std $= [0.229, 0.224, 0.225]$) untuk menjaga kompatibilitas representasi fitur dengan bobot pra-latih.
+
+\subsection{Segmentasi Paru-Paru Otomatis (\textit{Lung Masking})}
+
+Citra rontgen dada seringkali memuat banyak objek anatomi non-paru seperti tulang selangka, diafragma, jaringan lunak sekitar badan, bahkan artefak luar seperti teks anotasi radiologi yang tertanam (\textit{burned-in annotation}), ujung kateter, atau elektroda. Area-area ini tidak memiliki relevansi diagnostik untuk deteksi pneumonia, namun justru dapat membingungkan model dan menyebabkan model "belajar" fitur yang tidak relevan secara klinis (Teixeira et al., 2021; Azimi et al., 2022).
+
+Untuk mengatasi masalah ini, penelitian ini mengimplementasikan skema \textit{Dual Lung Masking} menggunakan model segmentasi paru-paru berpra-latih berbasis arsitektur \textbf{PSPNet} (\textit{Pyramid Scene Parsing Network}) dari pustaka \textit{torchxrayvision}. PSPNet adalah model yang telah dilatih secara terpisah pada ribuan citra rontgen dada untuk mengklasifikasikan 14 struktur anatomi secara piksel-per-piksel, termasuk paru-paru kiri (\textit{Left Lung}) dan paru-paru kanan (\textit{Right Lung}).
+
+Proses \textit{lung masking} berlangsung dalam langkah-langkah berikut:
+\begin{enumerate}
+  \item Citra grayscale di-\textit{rescale} ke rentang $[-1024, 1024]$ menggunakan fungsi normalisasi \textit{torchxrayvision} (\texttt{xrv.datasets.normalize}).
+  \item Diterapkan transformasi \texttt{XRayCenterCrop} dan \texttt{XRayResizer(512)} sesuai spesifikasi PSPNet.
+  \item PSPNet melakukan inferensi dan menghasilkan peta probabilitas untuk seluruh 14 label anatomi dengan ukuran (1, 14, 512, 512).
+  \item Fungsi Sigmoid diterapkan untuk mengubah logits menjadi probabilitas. Kanal paru-paru kiri dan kanan diekstrak secara terpisah.
+  \item Gabungan (\textit{union}) dari kanal paru-paru kiri dan kanan dihasilkan melalui operasi \texttt{np.maximum}, menghasilkan satu peta paru-paru utuh.
+  \item Ambang batas (\textit{threshold}) 0,5 diterapkan untuk menghasilkan masker biner akhir (nilai piksel = 0 atau 1).
+  \item Masker biner tersebut dikalikan secara \textit{element-wise} dengan citra rontgen dada asli, sehingga seluruh area di luar paru-paru menjadi hitam absolut (bernilai 0).
+\end{enumerate}
+
+Implementasi ini didukung oleh dua sub-kelas yang berbeda. Kelas \texttt{LungSegmentationModel} digunakan untuk pra-pemrosesan \textit{batch} massal pada GPU selama persiapan dataset (\textit{offline pre-computation}), sementara kelas \texttt{LungSegmenter} digunakan sebagai \textit{fallback} untuk inferensi secara \textit{on-the-fly} saat citra tidak memiliki masker paru yang telah dihitung sebelumnya.
+
+\subsection{Generasi Masker \textit{Ground Truth} dari Anotasi \textit{Bounding Box}}
+
+Dataset RSNA menyediakan anotasi lokasi pneumonia dalam format koordinat kotak pembatas (\textit{bounding box}: $x, y, \textit{width}, \textit{height}$) yang mengacu ke koordinat citra asli sebelum \textit{resizing}. Namun, tugas yang diselesaikan dalam penelitian ini adalah segmentasi semantik yang memerlukan masker biner piksel-per-piksel sebagai \textit{ground truth}.
+
+Oleh karena itu, diperlukan transformasi dari format \textit{bounding box} ke format masker biner. Prosesnya adalah sebagai berikut:
+\begin{enumerate}
+  \item Untuk setiap citra pasien, sebuah matriks nol berukuran 512 $\times$ 512 piksel diinisialisasi.
+  \item Koordinat \textit{bounding box} pada ukuran citra asli diskalakan ulang (\textit{rescaled}) secara proporsional ke dimensi target 512 $\times$ 512.
+  \item Setiap piksel yang berada di dalam area setiap \textit{bounding box} (termasuk semua \textit{bounding box} yang mungkin ada pada satu pasien) diisi dengan nilai 1.
+  \item Hasilnya adalah masker biner \textit{ground truth} berformat float32 dengan nilai 0,0 atau 1,0.
+\end{enumerate}
+
+Perlu dicatat bahwa pendekatan \textit{bounding box}-to-mask ini menghasilkan masker berformat persegi panjang yang tidak mengikuti bentuk anatomis sebenarnya dari infeksi. Namun, pendekatan ini merupakan standar yang umum digunakan pada dataset RSNA karena ketiadaan anotasi segmentasi piksel-per-piksel secara langsung (Seth et al., 2022). Masker kotak ini tetap memberikan sinyal lokasi yang memadai bagi model untuk belajar mengidentifikasi area infeksi.
+
+\section{Augmentasi Data}
+
+Untuk memperluas variasi pola dalam data latih secara artifisial, mengurangi risiko \textit{overfitting}, dan membuat model lebih tangguh terhadap variasi posisi, kecerahan, dan bentuk citra rontgen dari berbagai mesin pemindai dan posisi pasien yang berbeda, diterapkan serangkaian teknik augmentasi data secara dinamis (\textit{on-the-fly augmentation}) menggunakan pustaka \textit{Albumentations} yang dikenal sebagai salah satu pustaka augmentasi citra tercepat dan paling fleksibel untuk tugas segmentasi. Teknik augmentasi yang diimplementasikan terdiri atas:
+
+\begin{enumerate}
+  \item \textbf{\textit{Horizontal Flip}} (Cermin Horizontal) dengan probabilitas 50\%: Mencerminkan citra beserta masker \textit{ground truth}-nya secara horizontal. Teknik ini valid secara anatomis karena pneumonia dapat muncul di sisi paru-paru kiri maupun kanan.
+  \item \textbf{\textit{Shift-Scale-Rotate}}: Menerapkan pergeseran translasi acak hingga $\pm$10\% lebar/tinggi citra (\texttt{shift\_limit}), penskalaan acak antara $-$15\% dan $+$15\% (\texttt{scale\_limit}), dan rotasi acak hingga $\pm$10 derajat. Teknik ini mensimulasikan variasi posisi pasien dan perbedaan posisi alat pemindai.
+  \item \textbf{\textit{Elastic Transform}} dengan probabilitas 0\% (Dinonaktifkan): Transformasi elastis dinonaktifkan secara penuh karena teknik ini mendistorsi struktur anatomi sangkar rusuk (\textit{ribcage}) secara tidak realistis, yang dapat mengganggu model dalam mempelajari batas spasial paru-paru dan karakteristik infeksi.
+  \item \textbf{\textit{Coarse Dropout}} dengan probabilitas 10\%: Menghapus area berbentuk persegi secara acak pada citra latih untuk mensimulasikan adanya oklusi atau variasi kepadatan bayangan organ, melatih model agar lebih tangguh terhadap pola infeksi yang sebagian tertutup.
+  \item \textbf{\textit{Grid Distortion}} dengan probabilitas 15\%: Menerapkan distorsi berbasis grid untuk memperkenalkan variasi struktural ringan pada organ paru-paru tanpa merusak struktur geometris utamanya.
+  \item \textbf{\textit{Random Brightness and Contrast}} dengan probabilitas 40\%: Memodifikasi nilai kecerahan dan kontras piksel secara acak dalam rentang $\pm$20\% (\texttt{brightness\_limit} dan \texttt{contrast\_limit}). Teknik ini melatih kepekaan model terhadap variasi kualitas pemaparan sinar-X dari berbagai pengaturan mesin rontgen.
+  \item \textbf{\textit{Random Gamma}} (Koreksi Gamma) dengan probabilitas 20\%: Memodifikasi kurva gamma kecerahan secara non-linear dalam rentang 80\% hingga 120\% (\texttt{gamma\_limit=(80, 120)}) untuk mensimulasikan pencahayaan dan kontras jaringan lunak yang tidak seragam.
+  \item \textbf{\textit{Gauss Noise}} (Derau Gaussian) dengan probabilitas 15\%: Menambahkan derau acak berdistribusi normal pada piksel citra untuk meningkatkan ketahanan model terhadap artefak sinyal dan derau alat pemindai rontgen.
+\end{enumerate}
+
+Penting untuk dicatat bahwa augmentasi geometrik (flip, shift, rotate, grid distortion) diterapkan secara sinkron pada pasangan (citra, masker), sehingga masker \textit{ground truth} selalu terdistorsi dengan transformasi yang identik dengan citranya. Augmentasi fotometrik (brightness, contrast) dan dropout (coarse dropout) hanya diterapkan pada citra saja, bukan pada masker.
+
+\section{Perancangan Arsitektur Model Segmentasi}
+
+\subsection{Model Utama: \textit{CNN U-Net dengan sCSE}}
+
+Model segmentasi pneumonia yang diusulkan menggunakan arsitektur \textbf{U-Net} dengan mekanisme atensi sCSE (\textit{Spatial and Channel Squeeze-and-Excitation}) yang diimplementasikan melalui pustaka \textit{Segmentation Models PyTorch} (SMP). Model ini dikonfigurasi sebagai berikut:
+
+\begin{table}[H]
+  \centering
+  \caption{Spesifikasi Konfigurasi Arsitektur Model Segmentasi.}
+  \label{tab:model_config}
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Parameter Arsitektur} & \textbf{Nilai / Konfigurasi} \\
+    \midrule
+    Arsitektur Utama              & U-Net (Ronneberger et al., 2015)   \\
+    \textit{Encoder (Backbone)}   & \texttt{timm-efficientnet-b3}      \\
+    Inisialisasi Bobot \textit{Encoder} & \textit{Pretrained ImageNet} \\
+    Mekanisme Atensi Dekoder      & sCSE (\texttt{decoder\_attention\_type="scse"}) \\
+    Dimensi Input                 & $512 \times 512 \times 3$ piksel    \\
+    Jumlah Kelas Output           & 1 (Segmentasi Biner)               \\
+    Fungsi Aktivasi Output        & \textit{Sigmoid} (untuk probabilitas $[0, 1]$) \\
+    Kanal Input                   & 3 (RGB Semu)                       \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Peran \textit{Encoder}: EfficientNet-B3}
+
+\textit{EfficientNet-B3} berperan sebagai tulang punggung (\textit{backbone}) dari jalur \textit{encoder} pada arsitektur U-Net. \textit{Encoder} ini bertugas melakukan ekstraksi representasi fitur hierarki dari citra masukan melalui serangkaian blok \textit{Mobile Inverted Bottleneck Convolution} (MBConv) dengan berbagai ukuran kernel dan jumlah kanal yang meningkat secara bertahap (dari 40 kanal hingga 1.536 kanal pada blok terakhir). Bobot \textit{encoder} diinisialisasi dari bobot pra-latih ImageNet, yang secara signifikan mempercepat konvergensi dan membantu model mengekstrak representasi tekstur tingkat rendah (tepi, kontur) yang sangat relevan untuk deteksi batas opasitas paru-paru.
+
+Pada setiap tingkatan hierarki, \textit{encoder} menghasilkan peta fitur (\textit{feature maps}) dengan ukuran spasial yang semakin kecil namun semakin kaya secara semantik. Peta fitur multi-skala ini kemudian diteruskan ke jalur \textit{decoder} melalui mekanisme \textit{skip connections} standar milik U-Net.
+
+\subsection{Jalur \textit{Decoder} dengan sCSE \textit{Attention}}
+
+Jalur \textit{decoder} pada U-Net memulihkan resolusi spasial secara bertahap melalui operasi \textit{upsampling} (dekonvolusi) dan penggabungan dengan peta fitur dari \textit{encoder} melalui mekanisme \textit{skip connections} standar. Pada setiap blok di jalur \textit{decoder}, diintegrasikan modul atensi \textbf{sCSE} (\textit{Spatial and Channel Squeeze-and-Excitation}) yang bekerja secara paralel dalam dua jalur:
+
+\begin{itemize}
+  \item \textbf{Channel SE (cSE)}: Melakukan kalibrasi ulang pada dimensi saluran (\textit{channel}) dengan cara mengkompresi peta fitur menjadi vektor $C$-dimensi melalui \textit{Global Average Pooling}, kemudian memproyeksikannya melalui dua lapisan \textit{fully connected} dengan fungsi aktivasi ReLU dan Sigmoid. Vektor bobot yang dihasilkan (berdimensi $C$) digunakan untuk mengeksitasi saluran yang informatif dan menekan saluran yang kurang relevan.
+  \item \textbf{Spatial SE (sSE)}: Melakukan kalibrasi ulang pada dimensi spasial dengan cara menghasilkan satu peta bobot spasial berukuran $(1 \times H \times W)$ menggunakan konvolusi $1 \times 1$ dan fungsi Sigmoid. Peta bobot ini digunakan untuk menonjolkan lokasi piksel yang penting secara spasial (area yang mencurigakan mengandung pneumonia).
+\end{itemize}
+
+\textit{Output} dari kedua jalur (cSE dan sSE) dijumlahkan secara \textit{element-wise} untuk menghasilkan representasi fitur akhir yang terkalibrasi secara optimal. Penggunaan modul sCSE ini secara empiris terbukti meningkatkan performa segmentasi lesi medis pada berbagai dataset klinis.
+
+\subsection{Supervisi Dalam Menggunakan \textit{Auxiliary Head}}
+
+Untuk membantu stabilitas pelatihan dan mempercepat konvergensi pada lapisan terdalam model, arsitektur U-Net ini dikonfigurasi dengan mengaktifkan \textit{auxiliary head} (kepala bantu segmentasi) yang terpasang pada lapisan antara (\textit{intermediate layer}) jalur \textit{decoder}. \textit{Auxiliary head} ini bertugas menghasilkan prediksi segmentasi tambahan selama fase pelatihan. Nilai kerugian (\textit{loss}) dari kepala bantu ini dihitung menggunakan fungsi kerugian yang sama, lalu dikalikan dengan bobot kontribusi $\lambda_{\text{aux}} = 0,3$ sebelum digabungkan dengan total kerugian utama. Supervisi tambahan ini membantu mengalirkan gradien (\textit{backpropagated gradient}) secara lebih langsung ke lapisan-lapisan tengah jaringan saraf tiruan, mencegah masalah hilangnya gradien (\textit{vanishing gradient}), serta menuntun model untuk menyelaraskan peta fitur pada tingkat resolusi menengah. Kepala bantu ini dinonaktifkan secara penuh saat fase inferensi (evaluasi dan penyebaran aplikasi), sehingga tidak membebani performa komputasi waktu-nyata sistem.
+
+\section{Konfigurasi Pelatihan Model}
+
+\subsection{Strategi Pelatihan Dua Fase}
+
+Proses pelatihan dilakukan dalam dua fase yang berbeda untuk mengoptimalkan keseimbangan antara mempertahankan pengetahuan representasi fitur ImageNet (\textit{pretrained knowledge}) dengan mengadaptasinya ke domain spesifik citra rontgen medis.
+
+\begin{enumerate}
+  \item \textbf{Fase 1 -- \textit{Warmup} (Epoch 1--12)}: Seluruh parameter \textit{encoder} (backbone EfficientNet-B3) dibekukan (\textit{frozen}, \texttt{requires\_grad = False}). Pada 12 epoch pertama ini, hanya parameter jalur \textit{decoder} dan modul atensi sCSE yang baru diinisialisasi yang dilatih. Strategi ini mencegah penghancuran representasi fitur ImageNet yang berharga sebelum lapisan-lapisan baru benar-benar "siap" menerimanya.
+  \item \textbf{Fase 2 -- \textit{Fine-tuning} Penuh (Epoch 13+)}: \textit{Encoder} dibuka kembali (\textit{unfrozen}) dan seluruh parameter model dilatih secara bersama-sama (\textit{end-to-end fine-tuning}). Untuk menjaga stabilitas representasi fitur \textit{encoder} yang telah terbentuk, digunakan laju pembelajaran diferensial: \textit{encoder} mendapatkan laju pembelajaran sebesar $\textit{LR} \times 0.02$, sedangkan \textit{decoder} mendapatkan laju pembelajaran penuh $\textit{LR}$.
+\end{enumerate}
+
+\subsection{Optimizer dan \textit{Scheduler}}
+
+Optimizer yang digunakan adalah \textbf{AdamW} (\textit{Adaptive Moment Estimation with Decoupled Weight Decay}). AdamW merupakan varian yang diperbaiki dari Adam, di mana regulasi pembobotan (\textit{weight decay}) diimplementasikan secara terpisah dari proses pembaruan adaptif, menghasilkan regulasi yang lebih efektif dibanding Adam biasa. Konfigurasi optimizer dirinci pada Tabel \ref{tab:optimizer}.
+
+\begin{table}[H]
+  \centering
+  \caption{Konfigurasi Optimizer AdamW.}
+  \label{tab:optimizer}
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Parameter} & \textbf{Nilai} \\
+    \midrule
+    Jenis Optimizer         & AdamW \\
+    Laju Pembelajaran (\textit{LR}) Dasar & $2 \times 10^{-4}$ \\
+    LR \textit{Encoder}     & $4 \times 10^{-6}$ (LR dasar $\times$ 0.02) \\
+    LR \textit{Decoder}     & $2 \times 10^{-4}$ (LR dasar) \\
+    \textit{Weight Decay}   & $5 \times 10^{-4}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textit{Scheduler} yang digunakan adalah \textbf{\textit{Cosine Annealing Scheduler}} (\texttt{CosineAnnealingLR}). Penjadwal ini menurunkan laju pembelajaran secara perlahan mengikuti kurva kosinus dari nilai maksimal hingga mendekati nilai minimum ($1.0 \times 10^{-6}$) di akhir pelatihan (Epoch 100). Metode ini membantu model mencari nilai optimal secara stabil tanpa mengalami lompatan gradien yang ekstrem di akhir proses belajar.
+
+\subsection{Teknik Optimasi Komputasi}
+
+Dua teknik penting diterapkan untuk mengoptimalkan efisiensi komputasi:
+
+\begin{enumerate}
+  \item \textbf{\textit{Automatic Mixed Precision} (AMP)}: Komputasi selama \textit{forward pass} and \textit{backward pass} dilakukan dalam presisi setengah (\textit{FP16 / half-precision}), sementara pembaruan bobot optimizer dilakukan dalam presisi penuh (\textit{FP32}). Teknik ini dikelola secara otomatis oleh \texttt{torch.GradScaler} dan \texttt{torch.amp.autocast}, yang menghasilkan peningkatan kecepatan pelatihan yang signifikan dan pengurangan konsumsi memori VRAM GPU.
+  \item \textbf{\textit{Gradient Accumulation}}: Karena keterbatasan memori VRAM GPU yang membatasi ukuran \textit{batch} fisik yang dapat dimuat, digunakan teknik akumulasi gradien dengan jumlah langkah akumulasi sebesar 4. Dengan ukuran \textit{batch} fisik sebesar 4 citra per iterasi, pembaruan bobot optimizer dilakukan setiap 4 iterasi, sehingga efektif mensimulasikan pelatihan dengan \textit{batch} virtual berukuran $4 \times 4 = 16$ citra per langkah pembaruan.
+\end{enumerate}
+
+Konfigurasi lengkap pelatihan disajikan pada Tabel \ref{tab:training_config}.
+
+\begin{table}[H]
+  \centering
+  \caption{Konfigurasi Lengkap Proses Pelatihan Model.}
+  \label{tab:training_config}
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Parameter Pelatihan} & \textbf{Nilai} \\
+    \midrule
+    Ukuran \textit{Batch} Fisik       & 4 citra per iterasi \\
+    Langkah Akumulasi Gradien         & 4 langkah \\
+    \textit{Batch} Virtual Efektif    & 16 citra per pembaruan \\
+    Maksimum Epoch                    & 100 epoch \\
+    Epoch \textit{Freeze Encoder}     & 12 epoch \\
+    \textit{Early Stopping Patience}  & 35 epoch tanpa peningkatan \\
+    Presisi Komputasi                 & AMP FP16 \\
+    \textit{Learning Rate} Dasar      & $2,0 \times 10^{-4}$ \\
+    \textit{Scheduler}                & Cosine Annealing \\
+    Laju Belajar Minimum ($\eta_{\min}$) & $1.0 \times 10^{-6}$ \\
+    Metrik Checkpoint Terbaik         & \textit{Validation Loss} terendah \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth,height=0.4\textheight,keepaspectratio]{img/pipeline_pelatihan.png}
+  \caption{Pipeline Pelatihan Model dengan Mekanisme Freeze, AMP, dan Early Stopping.}
+  \label{fig:pipeline_pelatihan}
+\end{figure}
+
+\subsection{Fungsi Kerugian (\textit{Loss Function}) Unified Focal Loss}
+
+Karena ketimpangan jumlah data piksel latar belakang yang sangat besar dibanding piksel pneumonia, fungsi kerugian standar seperti \textit{Binary Cross-Entropy} (BCE) biasa akan membuat model cenderung mengabaikan area pneumonia yang kecil. Untuk mengatasinya, digunakan fungsi kerugian \textbf{\textit{Unified Focal Loss}} yang menggabungkan dua jenis fungsi kerugian secara seimbang:
+
+\begin{equation}
+  L_{\text{unified\_focal}} = 0.5 \cdot L_{\text{Focal}} + 0.5 \cdot L_{\text{FT}}
+\end{equation}
+
+di mana $L_{\text{Focal}}$ bertugas mengoptimalkan prediksi tingkat piksel secara individual, sedangkan $L_{\text{FT}}$ (Focal Tversky Loss) bertugas mengoptimalkan kesamaan area prediksi secara global dengan memberikan bobot lebih berat untuk menekan angka positif palsu (\textit{False Positive}).
+
+\subsubsection{Focal Loss ($L_{\text{Focal}}$)}
+
+Focal Loss memodifikasi BCE biasa dengan menambahkan faktor pengurang (\textit{modulating factor}) agar model bisa mengabaikan piksel latar belakang yang mudah diprediksi dan fokus belajar pada piksel-piksel "sulit" yang berada di batas infeksi:
+
+\begin{equation}
+  L_{\text{Focal}} = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+
+di mana $\alpha = 0,25$ adalah bobot penyeimbang kelas, $\gamma = 2,0$ adalah parameter pemfokus piksel sulit, dan $p_t$ adalah probabilitas prediksi model.
+
+\subsubsection{Focal Tversky Loss ($L_{\text{FT}}$)}
+
+Focal Tversky Loss mengoptimalkan indeks Tversky ($TI$) untuk meningkatkan nilai presisi model dengan cara memberikan penalti lebih besar pada piksel positif palsu ($FP$):
+
+\begin{equation}
+  L_{\text{FT}} = (1 - TI)^{1 - \gamma_T}
+\end{equation}
+
+Di mana indeks Tversky ($TI$) didefinisikan sebagai:
+
+\begin{equation}
+  TI = \frac{\sum p_i g_i + \varepsilon}{\sum p_i g_i + \alpha \sum (1-p_i)g_i + \beta \sum p_i(1-g_i) + \varepsilon}
+\end{equation}
+
+Dengan $\alpha = 0,3$ (bobot untuk piksel negatif palsu / $FN$), $\beta = 0,7$ (bobot untuk piksel positif palsu / $FP$), $\gamma_T = 0,75$ sebagai parameter pemfokus, dan $\varepsilon = 10^{-6}$ sebagai penstabil komputasi.
+
+\section{Metrik Evaluasi}
+
+Performa model dievaluasi secara kuantitatif berdasarkan tiga metrik utama tingkat piksel, yang dihitung menggunakan nilai dari matriks konfusi: \textit{True Positive} ($TP$) untuk piksel pneumonia yang terdeteksi benar, \textit{True Negative} ($TN$) untuk piksel sehat yang terdeteksi benar, \textit{False Positive} ($FP$) untuk piksel sehat yang salah dideteksi sebagai pneumonia, dan \textit{False Negative} ($FN$) untuk piksel pneumonia yang gagal dideteksi.
+
+\begin{enumerate}
+  \item \textbf{\textit{Precision}}: Mengukur tingkat akurasi prediksi positif dari model:
+  \begin{equation}
+    Precision = \frac{TP}{TP + FP}
+  \end{equation}
+  \item \textbf{\textit{Recall} (\textit{Sensitivity})}: Mengukur kemampuan model dalam mendeteksi seluruh area infeksi pneumonia:
+  \begin{equation}
+    Recall = \frac{TP}{TP + FN}
+  \end{equation}
+  \item \textbf{\textit{Specificity}}: Mengukur kemampuan model dalam mengabaikan area paru yang sehat secara tepat:
+  \begin{equation}
+    Specificity = \frac{TN}{TN + FP}
+  \end{equation}
+\end{enumerate}
+
+\subsection{Test-Time Augmentation (TTA)}
+
+Untuk meningkatkan keandalan dan konsistensi pelokalan area pneumonia saat fase inferensi, diterapkan teknik \textit{Test-Time Augmentation} (TTA). Berbeda dengan penambahan data biasa yang digunakan saat melatih model, TTA bekerja pada saat melakukan prediksi pada data baru. Ketika sebuah citra radiografi dada diunggah untuk dianalisis:
+\begin{enumerate}
+  \item Citra asli digandakan menjadi tiga variasi bentuk: citra asli tanpa perubahan (\textit{original}), citra yang dicerminkan secara horizontal (\textit{horizontal flip}), dan citra yang dicerminkan secara vertikal (\textit{vertical flip}).
+  \item Model melakukan prediksi segmentasi secara terpisah pada ketiga variasi gambar tersebut.
+  \item Hasil prediksi dari gambar yang telah dimodifikasi (dicerminkan) akan dikembalikan ke posisi semula (\textit{de-augmented}).
+  \item Peta probabilitas akhir diperoleh dengan menghitung rata-rata (\textit{mean merge}) dari ketiga peta probabilitas prediksi tersebut.
+\end{enumerate}
+Penerapan TTA ini membantu menghaluskan batas segmentasi, mengurangi varians prediksi akibat orientasi anatomi paru yang sedikit bergeser, serta menekan piksel-piksel kesalahan positif palsu (\textit{false positives}) yang tidak konsisten pada gambar.
+
+\section{Metode Keterjelasan Model (Grad-CAM)}
+
+Untuk membantu menjelaskan proses pengambilan keputusan model secara klinis kepada dokter, digunakan metode \textit{Explainable AI} (XAI) berbasis \textbf{Grad-CAM} (\textit{Gradient-weighted Class Activation Mapping}). Peta panas Grad-CAM dibuat pada modul \texttt{src/explainability.py} menggunakan mekanisme \textit{hook} PyTorch untuk menangkap aktivasi dan nilai gradien dari lapisan target model.
+
+\subsection{Pemilihan Lapisan Target}
+
+Lapisan target yang digunakan adalah \textbf{blok konvolusi terakhir pada bagian \textit{encoder} EfficientNet-B3}. Blok terakhir ini dipilih karena memuat informasi semantik tingkat tinggi yang paling kaya mengenai konsep visual dari objek infeksi pneumonia.
+
+\subsection{Prosedur Generasi Heatmap}
+
+Proses pembuatan peta panas Grad-CAM terdiri dari beberapa tahapan:
+
+\begin{enumerate}
+  \item \textbf{Forward Pass}: Gambar masukan dimasukkan ke model untuk mendapatkan hasil prediksi. Nilai aktivasi pada lapisan target disimpan sebagai $\mathbf{A}^k$.
+  \item \textbf{Backward Pass}: Jumlah probabilitas prediksi positif dihitung kembali ke belakang (\textit{backpropagation}) untuk mendapatkan nilai gradien $\frac{\partial y}{\partial \mathbf{A}^k}$ pada lapisan target.
+  \item \textbf{Penyaringan Gradien}: Nilai gradien dirata-ratakan secara spasial untuk menghitung bobot pentingnya saluran fitur ($\alpha_k$):
+  \begin{equation}
+    \alpha_k = \frac{1}{Z} \sum_{u} \sum_{v} \frac{\partial y}{\partial A^k_{uv}}
+  \end{equation}
+  \item \textbf{Penggabungan Linear}: Peta panas kasar dihasilkan dari penjumlahan linear antara bobot $\alpha_k$ dan nilai aktivasi $\mathbf{A}^k$, lalu dipotong nilai negatifnya menggunakan fungsi ReLU:
+  \begin{equation}
+    L_{\text{CAM}} = \text{ReLU}\!\left(\sum_k \alpha_k \cdot \mathbf{A}^k\right)
+  \end{equation}
+  \item \textbf{Normalisasi \& Visualisasi}: Peta panas dinormalisasi ke rentang $[0, 1]$ lalu diperbesar kembali ke ukuran citra asli (512 $\times$ 512 piksel). Peta panas ini kemudian diubah menjadi visualisasi warna (merah untuk area paling fokus, biru untuk area yang diabaikan) dan ditumpangkan di atas citra rontgen dada asli.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth,height=0.4\textheight,keepaspectratio]{img/pipeline_inferensi.png}
+  \caption{Pipeline Inferensi, Analisis Keparahan, Lateralitas, dan Generasi Grad-CAM.}
+  \label{fig:pipeline_inferensi}
+\end{figure}
+
+\section{Prototipe Antarmuka Web Interaktif (Gradio)}
+
+Prototipe antarmuka web interaktif dibangun menggunakan pustaka \textbf{Gradio} agar model dapat digunakan dengan mudah oleh pengguna akhir (tenaga medis) melalui peramban web tanpa perlu memahami baris kode program.
+
+Fitur utama yang disediakan pada web Gradio ini meliputi:
+\begin{enumerate}
+  \item \textbf{Unggah Berkas}: Pengguna bisa langsung menyeret atau mengunggah berkas foto rontgen format DICOM (\texttt{.dcm}), PNG, maupun JPEG.
+  \item \textbf{Hasil Arsir Segmentasi}: Menampilkan arsir warna merah transparan di atas foto rontgen untuk menunjukkan area paru yang terinfeksi pneumonia.
+  \item \textbf{Peta Panas Grad-CAM}: Menampilkan peta panas warna-warni yang menunjukkan area fokus yang diperhatikan model saat memprediksi pneumonia.
+  \item \textbf{Tingkat Keparahan 5 Tingkat}: Sistem otomatis menghitung rasio luas infeksi pneumonia terhadap total luas paru-paru, kemudian mengelompokkannya menjadi:
+  \begin{itemize}
+    \item \textit{Normal / None}: Rasio = 0\%
+    \item \textit{Mild} (Ringan): Rasio $\le 5\%$
+    \item \textit{Moderate} (Sedang): $5\%\ <$ Rasio $\le 15\%$
+    \item \textit{Severe} (Berat): $15\%\ <$ Rasio $\le 30\%$
+    \item \textit{Critical} (Kritis): Rasio $> 30\%$
+  \end{itemize}
+  \item \textbf{Analisis Sisi Infeksi (Lateralitas)}: Mendeteksi letak sebaran infeksi apakah berada di paru bagian kiri (\textit{Left-sided}), kanan (\textit{Right-sided}), atau di kedua belah paru (\textit{Bilateral}).
+  \item \textbf{Tingkat Kepercayaan}: Menampilkan nilai rata-rata probabilitas hasil prediksi model.
+\end{enumerate}
+
+\section{Spesifikasi Perangkat dan Lingkungan Pengembangan}
+
+Seluruh proses eksperimen mulai dari pengolahan data, pelatihan, pengujian model, hingga pembuatan web Gradio dikerjakan menggunakan spesifikasi komputer pada Tabel \ref{tab:hardware_spec}. Lingkungan pengembangan dikelola menggunakan manajer dependensi \texttt{uv} dengan bahasa pemrograman Python 3.11 untuk menjamin konsistensi jalannya kode program.
+
+\begin{table}[H]
+  \centering
+  \caption{Spesifikasi Perangkat Keras dan Perangkat Lunak Penelitian.}
+  \label{tab:hardware_spec}
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Komponen} & \textbf{Spesifikasi} \\
+    \midrule
+    \multicolumn{2}{l}{\textit{\textbf{Perangkat Keras}}} \\
+    \midrule
+    Prosesor (CPU)    & Intel Core i7-12700H (14 Core, 4,70 GHz) \\
+    Memori Utama (RAM) & 32 GB DDR5 \\
+    Kartu Grafis (GPU) & NVIDIA GeForce RTX 3070 Laptop GPU (8 GB VRAM) \\
+    Penyimpanan       & NVMe SSD \\
+    Sistem Operasi    & Linux (CachyOS) \\
+    \midrule
+    \multicolumn{2}{l}{\textit{\textbf{Perangkat Lunak}}} \\
+    \midrule
+    Bahasa Pemrograman       & Python 3.11 \\
+    Manajer Dependensi       & \texttt{uv} \\
+    \textit{Deep Learning Framework} & PyTorch 2.4 \\
+    Segmentasi Medis         & \textit{segmentation-models-pytorch} (SMP) \\
+    Segmentasi Paru-paru     & \textit{torchxrayvision} (PSPNet) \\
+    Augmentasi Data          & \textit{Albumentations} \\
+    Pemrosesan Citra Medis   & \textit{pydicom}, \textit{OpenCV} \\
+    Komputasi Numerik        & \textit{NumPy}, \textit{Pandas} \\
+    Visualisasi Pelatihan    & \textit{TensorBoard} \\
+    Antarmuka Web            & \textit{Gradio} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ============================================================
+\end{document}

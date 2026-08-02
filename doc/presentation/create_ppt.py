@@ -315,7 +315,7 @@ def create_presentation():
 
     add_alert_block(sl2, Inches(0.6), Inches(5.2), Inches(12.0), Inches(1.3),
                     "Sistem yang Dibangun",
-                    "Penelitian ini membangun sistem CDSS (Clinical Decision Support System) berbasis U-Net + sCSE + EfficientNet-B3 mengikuti kerangka CRISP-DM, dilengkapi Grad-CAM dan antarmuka web Gradio yang dapat diakses via internet melalui Cloudflare Tunnel.")
+                    "Penelitian ini membangun sistem CAD (Computer-Aided Detection) berbasis U-Net + sCSE + EfficientNet-B3 mengikuti kerangka CRISP-DM, dilengkapi Grad-CAM dan antarmuka web Gradio yang dapat diakses via internet melalui Cloudflare Tunnel.")
 
     # =========================================================================
     # SLIDE 3: URGENSI SEGMENTASI MEDIS OTOMATIS
@@ -376,9 +376,9 @@ def create_presentation():
 
     add_clean_block(sl5, Inches(5.4), Inches(1.4), Inches(7.3), Inches(5.2),
                     "6 Fase CRISP-DM pada Penelitian Ini",
-                    ["1. Business Understanding: Kebutuhan CDSS screening awal penunjang keputusan dokter.",
-                     "2. Data Understanding: Dataset RSNA Pneumonia (30.227 CXR DICOM), analisis class imbalance.",
-                     "3. Data Preparation: Konversi DICOM ke PNG 8-bit, CLAHE enhancement, PSPNet Dual Lung Masking, augmentasi data (8 teknik).",
+                    ["1. Business Understanding: Kebutuhan sistem CAD sebagai alat bantu skrining awal penunjang keputusan dokter.",
+                     "2. Data Understanding: Dataset RSNA Pneumonia (26.684 CXR DICOM), analisis class imbalance.",
+                     "3. Data Preparation: Konversi DICOM ke PNG 8-bit, PSPNet Dual Lung Masking, augmentasi data (8 teknik).",
                      "4. Modeling: U-Net + EfficientNet-B3 + sCSE + Unified Focal Loss + pelatihan 2-fase (AdamW, AMP).",
                      "5. Evaluation: Evaluasi kuantitatif (Dice 0.6234, Recall 0.7082) & validasi visual Grad-CAM.",
                      "6. Deployment: Gradio Web App 4-panel & Cloudflare Tunnel (grad.mhisyam.com)."])
@@ -397,7 +397,7 @@ def create_presentation():
     add_clean_block(sl6, Inches(4.8), Inches(1.4), Inches(7.8), Inches(5.2),
                     "Rincian Tahapan Alur Penelitian",
                     ["• Input Data: Citra Rontgen Dada DICOM 16-bit dari RSNA Pneumonia Detection Challenge.",
-                     "• Preprocessing: Normalisasi Min-Max, kontras CLAHE, & segmentasi ROI paru PSPNet.",
+                     "• Preprocessing: Normalisasi Min-Max & segmentasi ROI paru PSPNet.",
                      "• Augmentasi Data: 8 teknik Albumentations (Rotation, Shift, Brightness, Noise, Dropout).",
                      "• Training U-Net: Optimizer AdamW, AMP FP16, Unified Focal Loss (α=0.5, γ=2.0).",
                      "• Evaluasi Model: Pengujian pada 3.543 citra test set & Confusion Matrix piksel.",
@@ -424,7 +424,7 @@ def create_presentation():
 
     add_clean_block(sl7, Inches(6.8), Inches(4.7), Inches(5.8), Inches(2.0),
                     "Activity Diagram Inferensi Medis",
-                    ["• Alur Logika: Input Rontgen ➔ Preprocessing CLAHE & PSPNet ➔ Inferensi U-Net + sCSE ➔ Generasi Heatmap Grad-CAM ➔ Output 4-Panel & Severity Report."])
+                    ["• Alur Logika: Input Rontgen ➔ Preprocessing PSPNet ➔ Inferensi U-Net + sCSE ➔ Generasi Heatmap Grad-CAM ➔ Output 4-Panel & Severity Report."])
 
     # =========================================================================
     # SLIDE 8: DATASET & PREPROCESSING
@@ -444,7 +444,6 @@ def create_presentation():
     add_clean_block(sl8, Inches(6.8), Inches(1.4), Inches(5.8), Inches(5.2),
                     "Preprocessing & Dual Lung Masking",
                     ["• 16-bit ke 8-bit: Normalisasi Min-Max [0, 255] & resize 512 x 512.",
-                     "• CLAHE: Peningkatan kontras lokal (clip_limit=2.0, tile 8x8).",
                      "• PSPNet Dual Lung Masking: Memotong ROI paru kiri & kanan, mengeliminasi teks DICOM, kabel EKG, & penanda L/R.",
                      "• 8 Augmentasi: Horizontal Flip, Shift-Scale-Rotate, Gamma, Noise, Coarse/Grid Dropout."])
 
@@ -550,24 +549,25 @@ def create_presentation():
                     "Recall 70,82% meminimalkan risiko false negative medis, sementara Specificity 97,81% mencegah false alarm berlebih.")
 
     # =========================================================================
-    # SLIDE 11: PERBANDINGAN BASELINE & ABLATION STUDY
+    # SLIDE 11: ABLATION STUDY --- ANALISIS KOMPONEN
     # =========================================================================
     sl11 = prs.slides.add_slide(blank_layout)
-    add_slide_header(sl11, "PERBANDINGAN BASELINE & ABLATION STUDY", "Analisis Kontribusi Inkremental Komponen Model (+14,1% Dice Total Gain)")
+    add_slide_header(sl11, "ABLATION STUDY --- ANALISIS KOMPONEN", "Pengaruh Komponen Utama terhadap Performa Model (Analisis Kualitatif)")
     add_slide_footer(sl11, 11)
 
-    rows, cols = 6, 5
-    left, top, width, height = Inches(0.6), Inches(1.4), Inches(12.0), Inches(2.8)
+    rows, cols = 7, 3
+    left, top, width, height = Inches(0.6), Inches(1.4), Inches(12.0), Inches(3.4)
     table_shape = sl11.shapes.add_table(rows, cols, left, top, width, height)
     table = table_shape.table
 
-    headers = ["Konfigurasi Komponen Model", "Dice", "Recall", "Precision", "Δ Dice"]
+    headers = ["Komponen", "Dampak Jika Dihapus", "Bukti Nyata"]
     data = [
-        ["Baseline U-Net (Tanpa Pretrain)", "0.4820", "0.5310", "0.5240", "—"],
-        ["+ EfficientNet-B3 Pretrained ImageNet", "0.5410", "0.6070", "0.5730", "+5,9%"],
-        ["+ sCSE Attention Gate", "0.5890", "0.6620", "0.6280", "+4,8%"],
-        ["+ Unified Focal Loss (α=0.5, γ=2.0)", "0.6080", "0.6940", "0.6610", "+1,9%"],
-        ["+ CLAHE & Augmentasi Data (Model Final)", "0.6234", "0.7082", "0.6868", "+1,5%"]
+        ["Bobot ImageNet (Pre-trained)", "Akurasi deteksi model menurun", "Val Loss Epoch 12: 0,3212 vs Epoch 46: 0,2755"],
+        ["Atensi sCSE", "Ketelitian batas arsiran berkurang", "Hasil evaluasi literatur (Roy et al., 2018)"],
+        ["Unified Focal Loss", "Kemampuan mencari area pneumonia menurun", "Nilai Recall yang tinggi (0,7082)"],
+        ["Pemotongan Paru (PSPNet)", "Salah deteksi di luar area paru-paru", "Sesuai hasil penelitian Teixeira et al. (2021)"],
+        ["AMP + Grad. Accumulation", "Waktu latihan lambat, memori GPU tidak cukup", "Pelatihan tidak bisa berjalan tanpa ini"],
+        ["Augmentasi Gambar", "Kemampuan membaca gambar baru menurun", "Kurva loss latihan dan validasi tetap stabil"]
     ]
 
     for c_idx, h in enumerate(headers):
@@ -586,19 +586,17 @@ def create_presentation():
             cell = table.cell(r_idx + 1, c_idx)
             cell.text = val
             cell.fill.solid()
-            cell.fill.fore_color.rgb = C_LIGHT_PINK if r_idx == 4 else C_WHITE
+            cell.fill.fore_color.rgb = C_WHITE
             for p in cell.text_frame.paragraphs:
                 p.font.name = FONT_FAMILY
-                p.font.size = Pt(10)
-                if r_idx == 4:
+                p.font.size = Pt(9.5)
+                if c_idx == 0:
                     p.font.bold = True
                 p.font.color.rgb = C_BLACK
 
-    add_clean_block(sl11, Inches(0.6), Inches(4.5), Inches(12.0), Inches(2.1),
-                    "Key Takeaways Ablation Study",
-                    ["• Pemanfaatan bobot ImageNet pada encoder EfficientNet-B3 memberikan lonjakan terbesar (+5,9% Dice).",
-                     "• Atensi sCSE memperjelas batas lesi & menyaring fitur relevan pada skip connections (+4,8% Dice).",
-                     "• Total peningkatan kumulatif Dice Score mencapai +14,1% dibanding U-Net baseline standar (0.4820 ke 0.6234)."])
+    add_alert_block(sl11, Inches(0.6), Inches(5.1), Inches(12.0), Inches(1.4),
+                    "Bukti Terkuat Transfer Learning",
+                    "Penurunan Val Loss dari 0,3212 (Epoch 12, encoder frozen) ke 0,2755 (Epoch 46) membuktikan bahwa bobot ImageNet pada EfficientNet-B3 sangat berpengaruh terhadap kemampuan model mengenali fitur rontgen paru-paru.")
 
     # =========================================================================
     # SLIDE 12: VISUALISASI SEGMENTASI KLINIS
@@ -714,7 +712,7 @@ def create_presentation():
 
     add_clean_block(sl14, Inches(6.8), Inches(4.7), Inches(5.8), Inches(2.0),
                     "Activity Diagram Inferensi Medis",
-                    ["• Alur Logika: Input Rontgen ➔ Preprocessing CLAHE & PSPNet ➔ Inferensi U-Net + sCSE ➔ Generasi Heatmap Grad-CAM ➔ Output 4-Panel & Severity Report."])
+                    ["• Alur Logika: Input Rontgen ➔ Preprocessing PSPNet ➔ Inferensi U-Net + sCSE ➔ Generasi Heatmap Grad-CAM ➔ Output 4-Panel & Severity Report."])
 
     # =========================================================================
     # SLIDE 15: TAMPILAN WEBSITE & CLOUDFLARE TUNNEL
