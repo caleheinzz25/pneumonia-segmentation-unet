@@ -10,8 +10,23 @@ outputs/
 logs/
 checkpoints/
 
-# Documentation (Excluded completely as requested)
-doc/
+# Documentation - ignore build artifacts and large files, track sources & outputs
+doc/**/*.aux
+doc/**/*.log
+doc/**/*.toc
+doc/**/*.lof
+doc/**/*.lot
+doc/**/*.out
+doc/**/*.bbl
+doc/**/*.blg
+doc/**/*.bcf
+doc/**/*.run.xml
+doc/**/*.nav
+doc/**/*.snm
+doc/**/*.synctex.gz
+doc/markitdown/
+doc/refrence/
+doc/skripsi/
 
 # Python Cache & Build Artifacts
 __pycache__/
