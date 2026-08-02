@@ -12,7 +12,7 @@
 % ─── PACKAGES ───────────────────────────────────────────────
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[bahasa]{babel}
+\usepackage[indonesian]{babel}
 \usepackage{lmodern}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -28,6 +28,7 @@
 \usepackage{appendixnumberbeamer}
 \usepackage{adjustbox}
 \usepackage{ragged2e}
+\usepackage{microtype}
 
 % ─── COLOUR PALETTE (Gunadarma Magenta / Purple) ────────────
 \definecolor{GUMagenta}{RGB}{188,36,186}  % #BC24BA
@@ -196,7 +197,7 @@
   \begin{column}{0.48\textwidth}
     \begin{block}{\footnotesize Beban Klinis \& Keterbatasan Diagnosis Manual}
       \begin{itemize}\scriptsize
-        \item \textbf{Mortalitas Tinggi}: Pneumonia merenggut $\sim$\,2,5 juta jiwa global tahun 2019 (WHO), dengan korban terbesar anak di bawah 5 tahun \& lansia \parencite{who2022}.
+        \item \textbf{Mortalitas Tinggi}: Pneumonia merenggut $\sim$\,2,5 juta jiwa global tahun 2019 (WHO), dengan korban terbesar anak di bawah 5 tahun \& lansia.
         \item \textbf{Diagnosis via CXR}: Foto rontgen dada dipilih karena murah \& dosis radiasi rendah dibanding CT Scan, namun rentan salah baca --- terutama di fasilitas minim tenaga ahli.
         \item \textbf{Beban Radiolog}: Kelebihan beban kerja radiolog memperlambat diagnosis, sementara pola lesi pneumonia sering mirip edema atau efusi pleura.
       \end{itemize}
@@ -354,7 +355,7 @@
 \end{columns}
 \end{frame}
 
-% ─── SLIDE 7: DATASET & PREPROCESSING ────────────────────────
+% ─── SLIDE 8: DATASET & PREPROCESSING ────────────────────────
 \begin{frame}{DATASET \& PREPROCESSING PIPELINE}{RSNA Pneumonia Detection Challenge \& Dual Lung Masking}
 \begin{columns}[T]
   \begin{column}{0.48\textwidth}
@@ -403,7 +404,7 @@
       \begin{itemize}\tiny
         \item \textbf{Parameter Sharing}: Penggunaan ulang bobot kernel di seluruh piksel citra, meminimalkan risiko \textit{overfitting}.
         \item \textbf{Spatial Hierarchy}: Mempertahankan relasi spasial antar-piksel tetangga pada organ paru.
-        \item \textbf{Pretrained Backbone}: Menjadi fondasi *Feature Extractor* pada arsitektur U-Net (EfficientNet-B3).
+        \item \textbf{Pretrained Backbone}: Menjadi fondasi \textit{Feature Extractor} pada arsitektur U-Net (EfficientNet-B3).
       \end{itemize}
     \end{block}
   \end{column}
@@ -471,8 +472,8 @@
 \end{columns}
 \end{frame}
 
-% ─── SLIDE 9: HASIL EVALUASI KUANTITATIF & CONFUSION MATRIX ─
-\begin{frame}{HASIL EVALUASI KUANTITATIF \& CONFUSION MATRIX}{Evaluasi Performa Segmentasi pada Data Validasi (350.224.384 Total Piksel)}
+% ─── SLIDE 10: HASIL EVALUASI KUANTITATIF & CONFUSION MATRIX ─
+\begin{frame}[shrink=5]{HASIL EVALUASI KUANTITATIF \& CONFUSION MATRIX}{Evaluasi Performa Segmentasi pada Data Validasi (350.224.384 Total Piksel)}
 \begin{columns}[T]
   \begin{column}{0.44\textwidth}
     \begin{block}{\footnotesize Metrik Utama Performa (KPI $\ge 0,60$)}
@@ -494,8 +495,8 @@
         \toprule
         & \textbf{Pred. Normal} & \textbf{Pred. Pneumonia} \\
         \midrule
-        \textbf{Act. Normal} & \textbf{TN = 312.284.691} (97,81\%) & \textbf{FP = 7.198.145} (2,19\%) \\
-        \textbf{Act. Pneumonia} & \textbf{FN = 9.995.562} (29,18\%) & \textbf{TP = 20.745.986} (70,82\%) \\
+        \textbf{Act. Normal} & \textbf{TN=312.284.691} (97,81\%) & \textbf{FP=7.198.145} (2,19\%) \\
+        \textbf{Act. Pneumonia} & \textbf{FN=9.995.562} (29,18\%) & \textbf{TP=20.745.986} (70,82\%) \\
         \bottomrule
       \end{tabular}
     \end{block}
@@ -594,7 +595,7 @@
 \end{columns}
 \end{frame}
 
-% ─── SLIDE 14: TAMPILAN WEBSITE & CLOUDFLARE TUNNEL ─────────
+% ─── SLIDE 13: TAMPILAN WEBSITE & CLOUDFLARE TUNNEL ─────────
 \begin{frame}{TAMPILAN WEBSITE \& CLOUDFLARE TUNNEL DEPLOYMENT}{Antarmuka Web Gradio Interaktif \& Akses Publik Terenkripsi HTTPS}
 \begin{columns}[c]
   \begin{column}{0.48\textwidth}
@@ -624,7 +625,7 @@
 \end{frame}
 
 % ─── SLIDE 14: KESIMPULAN ───────────────────────────────────
-\begin{frame}{KESIMPULAN}{Sintesis Capaian Penelitian Berdasarkan Tujuan \& Pengujian}
+\begin{frame}{KESIMPULAN PENELITIAN}{Sintesis Capaian Penelitian Berdasarkan Tujuan \& Pengujian}
 \begin{block}{\footnotesize Kesimpulan Penelitian (Bab V --- Penutup)}
   \begin{enumerate}\scriptsize
     \item \textbf{Model Terbangun}: Arsitektur U-Net + sCSE + EfficientNet-B3 berhasil dikembangkan. Pada data validasi diperoleh \textbf{Precision 68,68\%}, \textbf{Recall (Sensitivitas) 70,82\%}, dan \textbf{Specificity 97,81\%}. Spesifisitas tinggi membuktikan model sangat jarang salah mengenali paru sehat sebagai pneumonia.
