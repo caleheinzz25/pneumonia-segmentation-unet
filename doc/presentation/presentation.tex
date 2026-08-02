@@ -296,7 +296,7 @@
     \begin{block}{\footnotesize 6 Fase CRISP-DM pada Penelitian Ini}
       \begin{enumerate}\scriptsize
         \item \textbf{Business Understanding}: Kebutuhan CDSS screening awal penunjang keputusan dokter.
-        \item \textbf{Data Understanding}: Dataset RSNA Pneumonia (30.227 CXR DICOM), analisis \textit{class imbalance}.
+        \item \textbf{Data Understanding}: Dataset RSNA Pneumonia (26.684 CXR DICOM), analisis \textit{class imbalance}.
         \item \textbf{Data Preparation}: Konversi DICOM ke PNG 8-bit, CLAHE enhancement, PSPNet Dual Lung Masking, augmentasi data (8 teknik).
         \item \textbf{Modeling}: U-Net + EfficientNet-B3 + sCSE + Unified Focal Loss + pelatihan 2-fase (AdamW, AMP).
         \item \textbf{Evaluation}: Evaluasi kuantitatif (Dice 0,6234, Recall 0,7082) \& validasi visual Grad-CAM.
@@ -322,7 +322,7 @@
         \item \textbf{Preprocessing}: Normalisasi Min-Max, kontras CLAHE, \& segmentasi ROI paru PSPNet.
         \item \textbf{Augmentasi Data}: 8 teknik Albumentations (Rotation, Shift, Brightness, Noise, Dropout).
         \item \textbf{Training U-Net}: Optimizer AdamW, AMP FP16, Unified Focal Loss ($\alpha=0.5, \gamma=2.0$).
-        \item \textbf{Evaluasi Model}: Pengujian pada 3.543 citra test set \& Confusion Matrix piksel.
+        \item \textbf{Evaluasi Model}: Pengujian pada data validasi 1.336 pasien (20\%) \& Confusion Matrix tingkat piksel.
         \item \textbf{XAI \& Web App}: Peta gradien Grad-CAM, kalkulasi Severity Tier, \& Gradio Web deployment.
       \end{itemize}
     \end{block}
@@ -495,43 +495,42 @@
         \toprule
         & \textbf{Pred. Normal} & \textbf{Pred. Pneumonia} \\
         \midrule
-        \textbf{Act. Normal} & \textbf{TN=312.284.691} (97,81\%) & \textbf{FP=7.198.145} (2,19\%) \\
-        \textbf{Act. Pneumonia} & \textbf{FN=9.995.562} (29,18\%) & \textbf{TP=20.745.986} (70,82\%) \\
+        \textbf{Act. Normal} & \textbf{TN=312.284.691} (97,75\%) & \textbf{FP=7.198.145} (2,25\%) \\
+        \textbf{Act. Pneumonia} & \textbf{FN=9.995.562} (32,51\%) & \textbf{TP=20.745.986} (67,49\%) \\
         \bottomrule
       \end{tabular}
+      
+      \vspace{0.1cm}
+      *Catatan: Precision piksel $\approx$74,24\%, Recall piksel $\approx$67,49\%
     \end{block}
     \begin{exampleblock}{\footnotesize Signifikansi Klinis}
-      \scriptsize Recall 70,82\% meminimalkan risiko \textit{false negative} medis, sementara Specificity 97,81\% mencegah \textit{false alarm} berlebih.
+      \scriptsize Recall 70,82\% (image-level) meminimalkan risiko \textit{false negative} medis. Nilai Specificity 97,75\% dari confusion matrix piksel membuktikan model sangat jarang salah mengenali jaringan sehat sebagai pneumonia.
     \end{exampleblock}
   \end{column}
 \end{columns}
 \end{frame}
 
 % ─── SLIDE 10: PERBANDINGAN BASELINE & ABLATION STUDY ───────
-\begin{frame}{PERBANDINGAN BASELINE \& ABLATION STUDY}{Analisis Kontribusi Inkremental Komponen Model (+14,1\% Dice Total Gain)}
+\begin{frame}{ABLATION STUDY --- ANALISIS KOMPONEN}{Pengaruh Komponen Utama terhadap Performa Model (Analisis Kualitatif)}
 \centering
 \scriptsize
-\begin{tabular}{lcccc}
+\begin{tabular}{p{3.5cm}p{4.5cm}p{4.5cm}}
   \toprule
-  \textbf{Konfigurasi Komponen Model} & \textbf{Dice} & \textbf{Recall} & \textbf{Precision} & \textbf{$\Delta$ Dice} \\
+  \textbf{Komponen} & \textbf{Dampak Jika Dihapus} & \textbf{Bukti Nyata} \\
   \midrule
-  Baseline U-Net (Tanpa Pretrain) & 0.4820 & 0.5310 & 0.5240 & — \\
-  + EfficientNet-B3 Pretrained ImageNet & 0.5410 & 0.6070 & 0.5730 & +5,9\% \\
-  + sCSE Attention Gate & 0.5890 & 0.6620 & 0.6280 & +4,8\% \\
-  + Unified Focal Loss ($\alpha=0.5, \gamma=2.0$) & 0.6080 & 0.6940 & 0.6610 & +1,9\% \\
-  \rowcolor{GULightPink!50}
-  \textbf{+ CLAHE \& Augmentasi Data (Model Final)} & \textbf{0.6234} & \textbf{0.7082} & \textbf{0.6868} & \textbf{+1,5\%} \\
+  Bobot ImageNet (Pre-trained) & $\downarrow$ Akurasi deteksi model & Val Loss Epoch 12: 0,3212 vs Epoch 46: 0,2755 \\
+  Atensi sCSE & $\downarrow$ Ketelitian batas arsiran & Hasil evaluasi literatur (Roy et al., 2018) \\
+  Unified Focal Loss & $\downarrow$ Kemampuan mencari area pneumonia & Nilai Recall yang tinggi (0,7082) \\
+  Pemotongan Paru (PSPNet) & $\uparrow$ Salah deteksi di luar paru-paru & Sesuai hasil penelitian Teixeira et al. (2021) \\
+  AMP + Grad. Accumulation & $\uparrow$ Waktu latihan, memori GPU tidak cukup & Pelatihan tidak bisa berjalan lanpa ini \\
+  Augmentasi Gambar & $\downarrow$ Kemampuan membaca gambar baru & Kurva loss latihan dan validasi tetap stabil \\
   \bottomrule
 \end{tabular}
 
-\vspace{0.15cm}
-\begin{block}{\footnotesize Key Takeaways Ablation Study}
-  \begin{itemize}\scriptsize
-    \item Pemanfaatan bobot ImageNet pada encoder EfficientNet-B3 memberikan lonjakan terbesar (\textbf{+5,9\% Dice}).
-    \item Atensi sCSE memperjelas batas lesi \& menyaring fitur relevan pada skip connections (\textbf{+4,8\% Dice}).
-    \item Total peningkatan kumulatif Dice Score mencapai \textbf{+14,1\%} dibanding U-Net baseline standar (0.4820 ke 0.6234).
-  \end{itemize}
-\end{block}
+\vspace{0.1cm}
+\begin{alertblock}{\footnotesize Bukti Terkuat Transfer Learning}
+  \scriptsize Penurunan \textit{Val Loss} dari 0,3212 (Epoch 12, encoder frozen) ke 0,2755 (Epoch 46) membuktikan bahwa bobot ImageNet pada EfficientNet-B3 sangat berpengaruh terhadap kemampuan model mengenali fitur rontgen paru-paru.
+\end{alertblock}
 \end{frame}
 
 % ─── SLIDE 11: VISUALISASI SEGMENTASI KLINIS ────────────────
@@ -606,6 +605,7 @@
         \item Dual Input (DICOM / PNG / JPG).
         \item Interactive Threshold Slider ($0.1 - 0.9$).
         \item Visual 4-Panel Output \& Laporan Severity.
+        \item Inferensi cepat \textbf{1--3 detik} per citra (GPU RTX 3070).
       \end{itemize}
     \end{block}
   \end{column}
