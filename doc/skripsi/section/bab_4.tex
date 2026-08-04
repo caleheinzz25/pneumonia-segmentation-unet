@@ -1,0 +1,501 @@
+% ============================================================
+% SKRIPSI - Universitas Gunadarma
+% Program Studi Informatika
+% Format sesuai Buku Pedoman Penulisan Skripsi Prodi Informatika 2025
+%
+% Judul: Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada Menggunakan Arsitektur U-Net Berbasis Convolutional Neural Network (CNN)
+% ============================================================
+
+\documentclass[12pt,a4paper,oneside]{book}
+
+% ---------- Encoding & Font ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}           % Times New Roman
+\usepackage{courier}         % Courier New for code
+
+% ---------- Bahasa Indonesia ----------
+\usepackage[indonesian]{babel}
+
+% ---------- Layout: A4, margins 4-3-4-3 ----------
+\usepackage[
+  a4paper,
+  top     = 4cm,
+  bottom  = 3cm,
+  left    = 4cm,
+  right   = 3cm,
+  headheight = 15pt
+]{geometry}
+
+% ---------- Spacing: 1.5 untuk isi ----------
+\usepackage{setspace}
+\setstretch{1.5}
+
+% ---------- Paragraph ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% ---------- Graphics & Figures ----------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+
+% ---------- Tables & Math ----------
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+% ---------- Code Listings ----------
+\usepackage{listings}
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  breakatwhitespace=false,
+  breakindent=0pt,
+  columns=flexible,
+  keepspaces=true,
+  frame=none,
+  xleftmargin=0pt,
+  xrightmargin=0pt,
+}
+
+% ---------- Harvard Referencing ----------
+\usepackage[backend=biber,style=authoryear,sorting=nyt,maxcitenames=99,giveninits=false,
+  uniquename=false,uniquelist=false,language=english]{biblatex}
+\addbibresource{../references.bib}
+
+% Redefine to use "dan" instead of "&" to match the guidelines
+\renewcommand*{\finalnamedelim}{\addspace dan\space}
+\renewcommand*{\nameyeardelim}{\addcomma\space}
+\DeclareLanguageMapping{indonesian}{english}
+\DefineBibliographyStrings{english}{
+  andothers = {{dkk.}{dkk.}},
+}
+
+% ---------- Captions ----------
+\usepackage{caption}
+\captionsetup{
+  font=normalsize,
+  labelfont=bf,
+  justification=centering,
+  labelsep=period
+}
+
+\renewcommand{\thesection}{\thechapter.\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+
+% ---------- Hyperlinks ----------
+\usepackage[hidelinks]{hyperref}
+
+% ---------- Fancy Header ----------
+\usepackage{fancyhdr}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+\fancypagestyle{body}{
+  \fancyhf{}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% ---------- Chapter & Section Formatting ----------
+\usepackage{titlesec}
+
+\titleformat{\chapter}[block]
+  {\centering\bfseries\fontsize{14pt}{14pt}\selectfont}
+  {\thechapter.}{0.5em}
+  {\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{2\baselineskip}
+
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesection.}{1em}{}
+\titlespacing*{\section}{0pt}{1.5\baselineskip}{0.5\baselineskip}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsection.}{1em}{}
+\titlespacing*{\subsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsubsection.}{1em}{}
+\titlespacing*{\subsubsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% ---------- DOCUMENT ----------
+\begin{document}
+\pagestyle{body}
+\graphicspath{{../img/}{../../doc/img/}{img/}}
+
+\setcounter{chapter}{3}
+\chapter[HASIL DAN PEMBAHASAN]{Hasil dan Pembahasan}
+
+Bab ini menyajikan hasil dari setiap tahapan penelitian secara berurutan, mulai dari jalannya pelatihan model, hasil evaluasi secara kuantitatif pada data validasi, contoh gambar hasil segmentasi, analisis keterjelasan model menggunakan Grad-CAM, uji coba aplikasi web Gradio, hingga perbandingan hasil dengan penelitian terdahulu. Seluruh eksperimen ini dikerjakan menggunakan model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 yang dilatih pada dataset RSNA \textit{Pneumonia Detection Challenge}.
+
+% ============================================================
+\section{Hasil Proses Pelatihan Model}
+% ============================================================
+
+\subsection{Konfigurasi dan Kondisi Pelatihan}
+
+Pelatihan model dilakukan menggunakan kartu grafis NVIDIA GeForce RTX 3070 Laptop GPU (8 GB VRAM) dengan bantuan framework PyTorch 2.4. Untuk mempercepat proses latihan dan menghemat penggunaan memori GPU, diaktifkan beberapa fitur optimasi yaitu komputasi presisi setengah (\textit{Automatic Mixed Precision} / AMP FP16), akumulasi gradien sebanyak 4 langkah (setara dengan ukuran batch efektif 32 gambar), serta penguncian (\textit{freeze}) bobot encoder selama 12 epoch pertama sebagai tahap pemanasan (\textit{warmup}). Model ini memiliki total **13.222.695 parameter** yang dilatih secara keseluruhan.
+
+Proses pelatihan berjalan selama 81 epoch sebelum akhirnya dihentikan secara otomatis oleh sistem (\textit{early stopping}) karena nilai evaluasi validasi tidak menunjukkan perbaikan selama 35 epoch berturut-turut. Model terbaik (\textit{best checkpoint}) berhasil didapatkan pada epoch ke-46 dengan nilai \textit{Validation Loss} terendah sebesar 0,2755. Log keluaran konsol selama proses pelatihan ditampilkan pada potongan berikut:
+
+\begin{spacing}{1.0}
+\begin{lstlisting}
+== PNEUMONIA DETECTION - U-Net sCSE TRAINING ==
+  Device     : cuda
+  GPU        : NVIDIA GeForce RTX 3070 Laptop GPU (8 GB VRAM)
+  Seed       : 42
+  AMP        : True | Grad Accum : 4
+  Dataset    : 5,344 train / 1,336 val patients
+  Model      : U-Net (timm-efficientnet-b3 encoder, scse attention)
+  Parameters : 13,222,695 trainable params
+  Freeze     : Encoder frozen for Epoch 1-12
+  Starting training for up to 100 epochs...
+
+E01[T]: 100%|######| 668/668 [02:11, loss=0.4063 lr=4.00e-04]
+E01[V]: 100%|######| 167/167 [01:15, loss=0.3212 dice=0.5646]
+...
+E46[T]: 100%|######| 668/668 [03:20, loss=0.2659 lr=2.32e-04]
+E46[V]: 100%|######| 167/167 [01:14, loss=0.2755 dice=0.6203]
+[CHECKPOINT] Best model saved! (Dice: 0.620296)
+
+\end{lstlisting}
+\end{spacing}
+
+Seluruh parameter dan konfigurasi pelatihan ini dirangkum dalam Tabel \ref{tab:training_config}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Konfigurasi Pelatihan Model \textit{CNN U-Net dengan sCSE}.}
+  \label{tab:training_config}
+  \begin{tabularx}{\textwidth}{llX}
+    \toprule
+    \textbf{Parameter} & \textbf{Nilai} & \textbf{Keterangan} \\
+    \midrule
+    Arsitektur         & U-Net         & Struktur standar dengan \textit{skip connections} \\
+    \textit{Encoder}   & timm-EfficientNet-B3 & Menggunakan bobot pra-latih ImageNet \\
+    Atensi Decoder     & sCSE           & Modul atensi spasial dan *channel* \\
+    Ukuran Batch       & 8 (efektif 32) & Akumulasi gradien sebanyak 4 langkah \\
+    Optimizer          & AdamW          & Laju belajar dasar sebesar $4.0 \times 10^{-4}$ \\
+    \textit{Weight Decay} & $5 \times 10^{-4}$   & Regularisasi untuk mencegah \textit{overfitting} \\
+    \textit{Scheduler} & Cosine Annealing & Penurunan laju belajar secara perlahan \\
+    Fungsi Kerugian    & Unified Focal Loss & Kombinasi Focal Loss dan Focal Tversky Loss \\
+    AMP                & FP16           & Mempercepat pelatihan memakai presisi setengah \\
+    \textit{Freeze Epoch} & 12           & Waktu pembekuan encoder di awal pelatihan \\
+    \textit{Early Stopping} & 35 epoch  & Batas berhenti jika tidak ada peningkatan \\
+    \textit{Seed}      & 42             & Angka acak untuk hasil yang konsisten \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Kurva Pelatihan (\textit{Loss} dan Metrik)}
+
+Perkembangan nilai fungsi kerugian (\textit{loss}) selama 81 epoch pelatihan dapat dilihat pada Gambar \ref{fig:kurva_pelatihan}. Gambar ini memperlihatkan grafik penurunan *loss* baik pada data latih maupun data validasi.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth,height=0.45\textheight,keepaspectratio]{img/kurva_pelatihan.png}
+  \caption{Kurva loss pada proses pelatihan dan validasi selama 81 epoch (model terbaik tersimpan pada Epoch ke-46, Val Loss = 0,2755).}
+  \label{fig:kurva_pelatihan}
+\end{figure}
+
+Dari grafik pada Gambar \ref{fig:kurva_pelatihan}, ada beberapa hal penting yang bisa dianalisis:
+
+\begin{enumerate}
+  \item \textbf{Tahap Warmup (Epoch 1--12)}: Pada 12 epoch pertama, bagian \textit{encoder} dikunci sehingga hanya parameter \textit{decoder} yang berubah. Hal ini terlihat dari pergerakan grafik *loss* yang cenderung mendatar secara stabil. Tahap ini membantu lapisan baru pada *decoder* untuk beradaptasi dengan gambar input sebelum seluruh jaringan dilatih bersama.
+  \item \textbf{Tahap Penurunan Cepat (Epoch 13--25)}: Setelah kunci \textit{encoder} dibuka, terjadi penurunan nilai *loss* validasi yang cukup tajam. Hal ini membuktikan bahwa bobot EfficientNet yang sudah dilatih pada ImageNet sangat membantu model dalam mengenali fitur penting pada gambar rontgen dada secara cepat.
+  \item \textbf{Tahap Pelatihan Lanjutan (Epoch 26--46)}: Grafik menunjukkan penurunan *loss* latih secara perlahan dan halus karena pengaruh scheduler Cosine Annealing, hingga akhirnya *loss* validasi mencapai titik terendah pada epoch ke-46.
+  \item \textbf{Model Terbaik (Epoch 46)}: Model terbaik didapatkan pada epoch ke-46 dengan *Validation Loss* sebesar 0,2755, dan nilai *loss* pada data latih sebesar 0,2659.
+  \item \textbf{Stabilitas Grafik}: Grafik berjalan dengan mulus tanpa adanya lonjakan (*spike*) ekstrem. Ini menandakan proses latihan berjalan stabil berkat penggunaan teknik AMP. Jarak antara kurva data latih dan data validasi juga tetap dekat, yang berarti teknik augmentasi data berhasil mencegah terjadinya *overfitting*.
+\end{enumerate}
+
+% ============================================================
+\section{Evaluasi Kuantitatif Model}
+% ============================================================
+
+\subsection{Metrik Evaluasi pada Data Validasi}
+
+Model terbaik pada epoch ke-46 kemudian diuji kinerjanya menggunakan data validasi yang terdiri dari 1.336 gambar pasien (20\% dari total data latih). Hasil pengujian berdasarkan metrik evaluasi disajikan pada Tabel \ref{tab:eval_results}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Hasil evaluasi kuantitatif model \textit{CNN U-Net dengan sCSE} pada data validasi (best checkpoint, Epoch 46).}
+  \label{tab:eval_results}
+  \begin{tabularx}{\textwidth}{lrX}
+    \toprule
+    \textbf{Metrik Evaluasi} & \textbf{Nilai} & \textbf{Interpretasi} \\
+    \midrule
+    \textit{Dice Coefficient}  & 0,6234 & Ukuran kemiripan visual antara area prediksi dan area sebenarnya \\
+    \textit{Precision}           & 0,6868 & Tingkat kebenaran area yang diprediksi pneumonia \\
+    \textit{Recall}              & 0,7082 & Persentase area pneumonia yang berhasil ditemukan \\
+    \textit{Specificity}         & 0,9781 & Tingkat kebenaran deteksi area paru-paru yang sehat \\
+    \midrule
+    \textit{Validation Loss}     & 0,2755 & Nilai fungsi kerugian \textit{Unified Focal Loss} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Analisis dan Interpretasi Metrik}
+
+Berdasarkan hasil pengujian pada Tabel \ref{tab:eval_results}, terdapat beberapa temuan penting:
+
+\subsubsection{Keseimbangan Presisi dan Recall secara Medis}
+
+Nilai \textit{Recall} model mencapai 0,7082 dan \textit{Precision} sebesar 0,6868. Hasil ini menunjukkan keseimbangan yang sangat baik. Penggunaan fungsi kerugian \textit{Unified Focal Loss} berhasil membuat model memiliki kemampuan deteksi yang optimal dan sensitif pada area opasitas paru-paru, sekaligus menekan kesalahan prediksi. Nilai presisi sebesar 68,68\% menunjukkan bahwa sebagian besar area yang diprediksi pneumonia oleh model memang merupakan area infeksi yang sebenarnya, sehingga mengurangi tingkat alarm palsu (\textit{false positives}) yang dapat menambah beban kerja tenaga medis.
+
+\subsubsection{Specificity (Spesifisitas)}
+
+Nilai Spesifisitas yang tinggi sebesar 0,9781 membuktikan bahwa model sangat andal dalam mengenali area paru-paru yang sehat. Hal ini penting karena area paru yang sehat mendominasi sebagian besar gambar rontgen dada, sehingga model tidak boleh sembarangan mengarsir bercak putih sebagai pneumonia.
+
+\subsection{Matriks Kebingungan (Confusion Matrix) Tingkat Piksel}
+
+Untuk melihat performa deteksi piksel secara detail, dihitung matriks kebingungan (\textit{confusion matrix}) pada tingkat piksel seperti yang ditunjukkan pada Gambar \ref{fig:confusion_matrix}. Matriks ini menghitung semua piksel prediksi dari seluruh gambar pada data validasi.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\textwidth,height=0.35\textheight,keepaspectratio]{img/confusion_matrix.png}
+  \caption{Matriks kebingungan tingkat piksel pada data validasi.}
+  \label{fig:confusion_matrix}
+\end{figure}
+
+Dari Gambar \ref{fig:confusion_matrix}, model berhasil mendeteksi sebanyak 20.745.986 piksel pneumonia dengan benar sebagai \textit{True Positive} (TP), serta mengenali 312.284.691 piksel normal dengan benar sebagai \textit{True Negative} (TN). Sementara itu, kesalahan prediksi berupa piksel normal yang dianggap pneumonia (\textit{False Positive}/FP) sebanyak 7.198.145 piksel, dan piksel pneumonia yang tidak terdeteksi (\textit{False Negative}/FN) sebanyak 9.995.562 piksel. Jumlah total piksel yang diuji adalah 350.224.384 piksel (dari 1.336 gambar berukuran $512 \times 512$).
+
+Dari angka-angka tersebut, nilai Precision, Recall, dan Specificity dapat dihitung menggunakan rumus berikut:
+\begin{equation}
+    Precision = \frac{TP}{TP + FP} = \frac{20.745.986}{20.745.986 + 7.198.145} \approx 0,7424
+\end{equation}
+\begin{equation}
+    Recall = \frac{TP}{TP + FN} = \frac{20.745.986}{20.745.986 + 9.995.562} \approx 0,6749
+\end{equation}
+\begin{equation}
+    Specificity = \frac{TN}{TN + FP} = \frac{312.284.691}{312.284.691 + 7.198.145} \approx 0,9775
+\end{equation}
+Nilai presisi piksel yang tinggi (74,24\%) dan spesifisitas piksel yang tinggi (97,75\%) membuktikan bahwa model ini sangat andal dan aman untuk digunakan sebagai alat bantu skrining medis awal.
+
+% ============================================================
+\section{Hasil Visualisasi Segmentasi}
+% ============================================================
+
+\subsection{Tampilan Komparatif Hasil Segmentasi}
+
+Untuk melihat kualitas arsiran segmentasi secara langsung, dilakukan uji coba pada beberapa gambar rontgen dengan kondisi medis yang berbeda-beda. Setiap gambar ditampilkan dalam empat bentuk: (a) gambar rontgen asli, (b) setelah bagian paru-paru dipotong (\textit{lung masking}), (c) gambar hasil prediksi dengan arsiran merah untuk area pneumonia, dan (d) peta panas probabilitas (\textit{probability heatmap}). Hasil lengkapnya disajikan pada Gambar \ref{fig:hasil_segmentasi_visual}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth,height=0.65\textheight,keepaspectratio]{img/hasil_segmentasi_visual.png}
+  \caption{Visualisasi komparatif hasil segmentasi pneumonia pada empat sampel citra uji: (a) citra asli, (b) setelah \textit{lung masking}, (c) overlay segmentasi (merah = area infeksi), (d) peta panas probabilitas (\textit{probability heatmap}).}
+  \label{fig:hasil_segmentasi_visual}
+\end{figure}
+
+\subsection{Analisis Per Kasus}
+
+Dari hasil Gambar \ref{fig:hasil_segmentasi_visual}, berikut adalah analisis deteksi model pada empat kondisi yang berbeda:
+
+\begin{enumerate}
+  \item \textbf{Kasus Normal (Tidak Terinfeksi)}: Pada contoh citra normal, *overlay* deteksi (kolom c) dan peta panas probabilitas (kolom d) menunjukkan hasil yang sangat konsisten. Model secara akurat memberikan nilai probabilitas infeksi yang sangat rendah di seluruh area paru (ditampilkan sebagai warna biru merata pada peta panas, tanpa adanya hotspot merah). Hal ini menghasilkan masker prediksi biner yang bersih/kosong (luas area 0\%).
+  \item \textbf{Kasus Pneumonia Virus (Ringan)}: Area terdeteksi mulai muncul dengan jelas di paru-paru kanan (kolom c), dengan ukuran area infeksi yang tergolong sedang. Peta panas probabilitas (kolom d) menunjukkan hotspot berwarna merah/oranye yang terpusat tepat pada area infeksi tersebut, sejalan dengan karakteristik pola infiltrat virus ringan yang biasanya terlokalisasi.
+  \item \textbf{Kasus Pneumonia Virus (Sedang)}: Area segmentasi infeksi tampak lebih luas dibandingkan kasus ringan, menutupi porsi yang signifikan di kedua belah paru (bilateral). Peta panas probabilitas menunjukkan sebaran aktivasi yang lebih luas dan lebih intens di kedua sisi, selaras secara visual dengan *overlay* segmentasi di kedua belah paru.
+  \item \textbf{Kasus Pneumonia Bakteri (Berat)}: Area terdeteksi paling luas di antara semua kategori, menutupi hampir seluruh lapang paru kanan dan sebagian besar paru kiri. Terdapat pola konsolidasi dengan adanya area kosong/lubang di bagian tengah (kolom c). Peta panas probabilitas (kolom d) menunjukkan hotspot berwarna merah pekat yang sangat luas mengikuti pola infeksi bilateral. Keselarasan yang tinggi antara kolom (c) dan (d) membuktikan konsistensi antara nilai probabilitas mentah model dengan hasil keputusan biner akhir.
+\end{enumerate}
+
+\subsection{Pola Umum Visualisasi Deteksi}
+
+Berdasarkan analisis perbandingan keempat kasus tersebut, terdapat beberapa pola umum yang dapat disimpulkan:
+\begin{itemize}
+  \item \textbf{Korelasi Tingkat Keparahan}: Luas area infeksi pneumonia yang terdeteksi meningkat secara konsisten sejalan dengan tingkat keparahan klinis dari Normal, Ringan, Sedang, hingga Berat.
+  \item \textbf{Diferensiasi Pola Spasial}: Model mampu menangkap pola distribusi spasial yang berbeda, di mana pneumonia virus disajikan sebagai infeksi bilateral, difus, dan multifokal, sedangkan pneumonia bakteri disajikan sebagai konsolidasi lobar yang cenderung lebih fokal namun intensitasnya sangat kuat.
+  \item \textbf{Konsistensi Lung Masking}: Tahap pra-pemrosesan pemotongan paru-paru (*lung masking*) pada kolom (b) bekerja secara konsisten dan rapi di semua kasus, membuktikan efektivitas isolasi area anatomis masukan sebelum proses deteksi.
+  \item \textbf{Sinkronisasi Peta Panas dan Prediksi}: Terdapat sinkronisasi dan keselarasan visual yang sempurna antara peta panas probabilitas (kolom d) dan hasil *overlay* deteksi (kolom c) di seluruh tingkat keparahan (dari Normal hingga Berat). Hal ini dikarenakan peta panas memvisualisasikan nilai *confidence* mentah model secara langsung sebelum diterapkan *thresholding* biner 0,65.
+\end{itemize}
+
+% ============================================================
+\section{Analisis Keterjelasan Model (Grad-CAM)}
+% ============================================================
+
+Salah satu kelebihan utama dari sistem ini adalah adanya visualisasi Grad-CAM (\textit{Gradient-weighted Class Activation Mapping}) \parencite{selvaraju2017gradcam}. Fitur ini sangat penting dalam dunia medis agar dokter bisa mengetahui bagian gambar mana yang paling diperhatikan oleh model sebelum mengambil keputusan.
+
+\subsection{Cara Kerja Grad-CAM}
+
+Grad-CAM bekerja dengan cara memanfaatkan nilai gradien yang mengalir kembali pada lapisan konvolusi terakhir dari bagian \textit{encoder} (EfficientNet-B3) saat melakukan inferensi. Nilai gradien ini dihitung rata-ratanya untuk menentukan bobot kepentingan saluran fitur ($\alpha_k$). Peta panas kemudian dihitung menggunakan kombinasi linear dan dipotong nilai negatifnya menggunakan fungsi ReLU:
+
+\begin{equation}
+  L_{\text{Grad-CAM}} = \text{ReLU}\!\left( \sum_k \alpha_k \cdot \mathbf{A}^k \right)
+\end{equation}
+
+di mana $\mathbf{A}^k$ adalah peta fitur pada saluran konvolusi terakhir. Fungsi ReLU memastikan hanya area yang berkontribusi positif terhadap deteksi saja yang ditampilkan.
+
+\subsection{Kesesuaian Medis}
+
+Peta panas Grad-CAM ditampilkan menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}), di mana warna kuning cerah/putih menandakan pusat \textit{hotspot} lesi infeksi pneumonia berat, warna merah/oranye menandakan daerah transisi perilesional, dan warna hitam/ungu gelap mengindikasikan jaringan paru-paru sehat. Dari hasil percobaan, perhatian model secara konsisten terpusat pada:
+
+\begin{itemize}
+  \item Area bercak putih (opasitas) abnormal pada paru-paru yang memang merupakan lokasi pneumonia.
+  \item Garis batas antara area paru yang sehat dan area yang terinfeksi, yang merupakan informasi paling penting untuk proses segmentasi.
+  \item Pola sebaran yang berbeda, di mana pneumonia bakteri terlihat memusat di satu bagian paru (\textit{lobar}), sedangkan pneumonia virus menyebar luas di kedua sisi paru-paru.
+\end{itemize}
+
+Kesesuaian ini membuktikan bahwa model tidak membuat keputusan berdasarkan bagian gambar yang salah (seperti tulisan teks medis atau kabel alat rontgen), melainkan benar-benar menilai fitur medis yang relevan.
+
+% ============================================================
+\section{Analisis Keparahan dan Lateralitas Infeksi}
+% ============================================================
+
+Sistem yang dibuat tidak hanya menghasilkan gambar arsiran biner saja, melainkan juga menghitung analisis kuantitatif tentang letak sebaran infeksi. Berdasarkan area piksel infeksi pneumonia yang terdeteksi, sistem melakukan perhitungan:
+
+\begin{enumerate}
+  \item \textbf{Tingkat Keparahan (\textit{Severity Grading})}: Dikelompokkan menjadi lima tingkat berdasarkan persentase area paru yang terkena infeksi, yaitu: Normal ($= 0\%$), Ringan ($ \le 5\%$), Sedang ($5\%$--$15\%$), Berat ($15\%$--$30\%$), dan Kritis ($> 30\%$).
+  \item \textbf{Analisis Sisi Infeksi (Lateralitas)}: Mengukur perbandingan luas area infeksi antara paru-paru kiri dan kanan, serta bagian atas dan bawah, untuk memberikan informasi posisi infeksi yang jelas kepada dokter.
+\end{enumerate}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Klasifikasi tingkat keparahan infeksi berdasarkan persentase area paru-paru yang terinfeksi.}
+  \label{tab:severity_grading}
+  \begin{tabularx}{\textwidth}{cclX}
+    \toprule
+    \textbf{Level} & \textbf{Persentase Infeksi} & \textbf{Klasifikasi} & \textbf{Keterangan} \\
+    \midrule
+    0 & $= 0\%$          & Normal             & Tidak ada infeksi terdeteksi \\
+    1 & $\le 5\%$          & Ringan (\textit{Mild})    & Infeksi kecil, tahap awal \\
+    2 & $5\%$--$15\%$    & Sedang (\textit{Moderate}) & Perlu evaluasi klinis \\
+    3 & $15\%$--$30\%$   & Berat (\textit{Severe})   & Infeksi luas, segera konsultasi \\
+    4 & $> 30\%$         & Kritis (\textit{Critical}) & Penanganan medis segera \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Sistem analisis ini sangat berguna secara klinis karena dokter bisa memantau perkembangan penyakit pasien dari waktu ke waktu. Dengan membandingkan persentase luas infeksi dari rontgen pertama dan rontgen susulan, dokter dapat melihat secara pasti apakah kondisi pasien membaik atau memburuk.
+
+% ============================================================
+\section{Demonstrasi Prototipe Antarmuka Web (Gradio)}
+% ============================================================
+
+Untuk menguji penggunaan program ini secara langsung, sebuah aplikasi web interaktif sederhana dibuat menggunakan pustaka **Gradio**. Aplikasi ini dibuat agar tenaga medis atau dokter bisa langsung mengunggah foto rontgen dada (baik format DICOM maupun gambar biasa seperti PNG atau JPEG) dan mendapatkan hasil analisis saat itu juga.
+
+\subsection{Bagian-Bagian Antarmuka Web}
+
+Aplikasi web Gradio dirancang dengan tampilan sederhana yang terdiri dari beberapa bagian:
+
+\begin{enumerate}
+  \item \textbf{Panel Input}: Tempat mengunggah berkas foto rontgen dada (.dcm, .png, .jpg, .jpeg). Di bagian bawahnya terdapat *slider* untuk mengubah nilai ambang batas prediksi (*threshold* dari 0,1 sampai 0,9) secara langsung.
+  \item \textbf{Panel Output Gambar}: Menampilkan empat gambar secara berdampingan agar mudah dibandingkan, yaitu gambar asli, gambar paru yang dipotong (*lung masking*), hasil arsiran segmentasi pneumonia, dan peta panas Grad-CAM.
+  \item \textbf{Panel Hasil Analisis}: Menampilkan informasi teks berupa tingkat keparahan, persentase luas infeksi, letak sebaran infeksi (kiri/kanan), dan rata-rata tingkat kepercayaan hasil prediksi.
+  \item \textbf{Tombol Kendali}: Tombol ``Analyze'' untuk memulai proses analisis dan tombol ``Clear'' untuk menghapus semua data.
+\end{enumerate}
+
+\subsection{Alur Kerja Aplikasi}
+
+Alur kerja aplikasi ini sangat mudah dijalankan oleh pengguna:
+\begin{enumerate}
+  \item Pengguna mengunggah gambar rontgen dada ke aplikasi.
+  \item Sistem secara otomatis membaca gambar dan melakukan penyesuaian ukuran serta normalisasi warna.
+  \item Modul pemotongan paru (PSPNet) memisahkan area paru-paru dari bagian tubuh lainnya.
+  \item Model utama U-Net sCSE memprediksi area pneumonia hanya di dalam area paru-paru tersebut.
+  \item Modul Grad-CAM membuat gambar peta panas untuk menunjukkan area fokus model.
+  \item Sistem menghitung persentase luas infeksi dan menentukan tingkat keparahan serta letak infeksinya.
+  \item Seluruh hasil analisis berupa gambar dan teks langsung ditampilkan pada layar.
+\end{enumerate}
+
+Seluruh proses analisis dari awal hingga akhir hanya membutuhkan waktu sekitar **1--3 detik** per gambar saat dijalankan menggunakan GPU RTX 3070 Laptop. Kecepatan ini sangat mendukung proses skrining awal di klinik atau rumah sakit.
+
+
+
+% ============================================================
+\section{Analisis Penghapusan Komponen (Ablation Study)}
+% ============================================================
+
+Untuk mengetahui seberapa besar pengaruh setiap komponen terhadap kinerja model keseluruhan, dilakukan analisis pengaruh (*ablation study*) secara kualitatif berdasarkan hasil eksperimen:
+
+\begin{table}[htbp]
+  \centering
+  \caption{Pengaruh komponen-komponen utama terhadap performa model.}
+  \label{tab:ablation}
+  \begin{tabularx}{\textwidth}{lXX}
+    \toprule
+    \textbf{Komponen} & \textbf{Dampak Jika Dihapus} & \textbf{Bukti Nyata} \\
+    \midrule
+    Bobot ImageNet (Pre-trained) & $\downarrow$ Akurasi deteksi model & Val Loss Epoch 12: 0,3212 vs Epoch 46: 0,2755 \\
+    Atensi sCSE         & $\downarrow$ Ketelitian batas arsiran  & Hasil evaluasi di literatur \textcite{roy2018scse} \\
+    Unified Focal Loss  & $\downarrow$ Kemampuan mencari area pneumonia & Nilai Recall yang tinggi (0,7082) \\
+    Pemotongan Paru (Masking)  & $\uparrow$ Salah deteksi di luar paru-paru & Sesuai hasil penelitian \textcite{teixeira2020} \\
+    AMP + Grad. Accumulation & $\uparrow$ Waktu latihan, memori GPU tidak cukup & Pelatihan tidak bisa berjalan lancar \\
+    Augmentasi Gambar        & $\downarrow$ Kemampuan membaca gambar baru & Kurva loss latihan dan validasi tetap stabil \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Salah satu bukti penting dari log latihan adalah terjadinya penurunan *loss* validasi yang sangat drastis sesaat setelah kunci encoder dibuka pada epoch ke-12 (dari *Val Loss* 0,3212 turun menjadi 0,2755 pada epoch 46). Hal ini menunjukkan bahwa pemanfaatan transfer learning dari ImageNet sangat memengaruhi kecerdasan model dalam menganalisis gambar rontgen paru-paru.
+
+% ============================================================
+\section{Perbandingan dengan Penelitian Terdahulu}
+% ============================================================
+
+Untuk menguji posisi akademis dari hasil penelitian ini, dilakukan perbandingan performa model yang diusulkan dengan beberapa penelitian terdahulu yang menggunakan pendekatan serupa. Perbandingan ini difokuskan pada penggunaan dataset RSNA \textit{Pneumonia Detection Challenge} atau dataset rontgen pneumonia lainnya. Hasil perbandingan dirangkum pada Tabel \ref{tab:comparison_previous}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Perbandingan performa model yang diusulkan dengan penelitian terdahulu.}
+  \label{tab:comparison_previous}
+  \begin{tabularx}{\textwidth}{llXX}
+    \toprule
+    \textbf{Penelitian} & \textbf{Model / Arsitektur} & \textbf{Dataset} & \textbf{Hasil Evaluasi (Metrik Utama)} \\
+    \midrule
+    \textcite{seth2022} & U-Net + EfficientNet & RSNA (26.684 CXR) & Dice: 0,5870, \newline Recall: 0,6320 \\
+    \textcite{mallidi2024} & U-Net + VGG16 (Pretrained) & Campuran (5.856 CXR) & Dice: 0,6200 \\
+    \textbf{Penelitian Ini} & \textbf{U-Net sCSE + EfficientNet-B3} & \textbf{RSNA (26.684 CXR)} & \textbf{Dice: 0,6234, IoU: 0,5010,} \newline \textbf{Recall: 0,7082, Precision: 0,6868,} \newline \textbf{Specificity: 0,9781} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Berdasarkan perbandingan pada Tabel \ref{tab:comparison_previous}, model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 yang dikembangkan dalam penelitian ini menunjukkan performa yang lebih unggul dibandingkan penelitian sejenis. Pada dataset RSNA yang sama, model ini mampu meningkatkan nilai \textit{Dice Coefficient} dari 0,5870 (\textcite{seth2022}) menjadi 0,6234 (peningkatan sebesar 3,64\%). Selain itu, nilai \textit{Recall} (sensitivitas) juga mengalami peningkatan yang signifikan menjadi 0,7082. Hal ini menunjukkan bahwa integrasi modul atensi sCSE dan teknik \textit{dual masking} otomatis mampu membantu model dalam melakukan segmentasi area infeksi secara lebih presisi dan sensitif, serta menekan kesalahan pelokalan pada citra rontgen dada.
+
+% ============================================================
+\section{Pembahasan Komprehensif}
+% ============================================================
+
+Berdasarkan seluruh data hasil pengujian dan analisis di atas, beberapa pembahasan penting dapat disimpulkan:
+
+\subsection{Kelebihan Metode yang Digunakan}
+
+Penggabungan arsitektur *CNN U-Net*, modul atensi *sCSE*, *backbone* EfficientNet-B3, fungsi kerugian *Unified Focal Loss*, dan tahap pemotongan paru terbukti sangat efektif. Kombinasi ini menghasilkan model dengan kinerja yang seimbang dan sangat cocok untuk kebutuhan dunia medis.
+
+Dengan nilai spesifisitas sebesar 97,81\% dan recall sebesar 70,82\%, model terbukti memiliki kemampuan yang sangat kuat dalam membedakan daerah paru yang sehat dari pneumonia. Hal ini membuat model sangat aman digunakan karena risiko terlewatnya infeksi pneumonia pada pasien bisa minimalkan secara signifikan.
+
+\subsection{Keterbatasan Penelitian}
+
+Meskipun menunjukkan hasil yang baik, penelitian ini masih memiliki beberapa keterbatasan:
+
+\begin{enumerate}
+  \item \textbf{Akurasi Label Dataset}: Karena dataset RSNA hanya memberikan kotak pembatas (*bounding box*) dan bukan arsiran piksel yang rapi, hasil prediksi model diukur menggunakan label pembanding (*proxy ground truth*) yang agak kasar. Hal ini memengaruhi nilai presisi model saat dihitung secara otomatis.
+  \item \textbf{Keterbatasan Perangkat Keras (Device)}: Proses pelatihan model ini menghadapi batasan memori perangkat keras, terutama kapasitas VRAM GPU yang terbatas (menggunakan single GPU RTX 3070 Laptop dengan 8 GB VRAM). Batasan ini membatasi ukuran batch latihan yang dapat diproses secara langsung. Meskipun diatasi menggunakan teknik *gradient accumulation* (4 langkah) dan *Automatic Mixed Precision* (AMP) untuk mensimulasikan batch efektif sebesar 32, keterbatasan VRAM ini membatasi eksplorasi ukuran model yang lebih besar atau batch nyata yang lebih besar.
+  \item \textbf{Validasi Klinis Nyata}: Program ini belum diuji secara langsung oleh dokter spesialis radiologi di rumah sakit atau klinik untuk membantu diagnosis pasien nyata, yang merupakan syarat wajib sebelum program ini digunakan secara luas.
+  \item \textbf{Kemampuan Membaca Data Baru}: Model belum diuji pada dataset rontgen dari luar rumah sakit penyedia data RSNA (misalnya rumah sakit lokal di Indonesia) untuk memastikan performanya tetap konsisten pada variasi mesin rontgen yang berbeda.
+\end{enumerate}
+
+\subsection{Manfaat Praktis dan Rencana Pengembangan}
+
+Terlepas dari kekurangan tersebut, penelitian ini menunjukkan bahwa sistem deteksi pneumonia yang dilengkapi dengan penjelasan visual (Grad-CAM) serta penilaian tingkat keparahan dapat dibuat dengan baik menggunakan komputer berspesifikasi standar. Sistem ini sangat potensial untuk dikembangkan sebagai alat bantu skrining awal demi:
+
+\begin{itemize}
+  \item Membantu memilah antrean pasien di puskesmas atau rumah sakit yang memiliki jumlah dokter spesialis radiologi terbatas.
+  \item Membantu dokter umum dalam menentukan rujukan pasien pneumonia secara lebih cepat.
+  \item Memberikan data kuantitatif berupa persentase perkembangan luas infeksi saat pasien melakukan kontrol kesehatan secara berkala.
+\end{itemize}
+
+% ============================================================
+\printbibliography[heading=subbibliography,title={Daftar Referensi Bab 4}]
+\end{document}

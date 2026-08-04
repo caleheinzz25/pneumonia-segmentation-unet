@@ -274,9 +274,9 @@ class PneumoniaDetectionApp:
             )
             overlay_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
 
-            # Probability heatmap
+            # Probability heatmap (INFERNO Medical Thermal Colormap)
             prob_colored = cv2.applyColorMap(
-                (prob * 255).astype(np.uint8), cv2.COLORMAP_JET
+                (prob * 255).astype(np.uint8), cv2.COLORMAP_INFERNO
             )
             prob_rgb = cv2.cvtColor(prob_colored, cv2.COLOR_BGR2RGB)
 
@@ -598,9 +598,10 @@ class PneumoniaDetectionApp:
                     gr.Markdown("### 📋 Contoh Citra X-Ray", elem_classes="examples-container")
                     examples = gr.Examples(
                         examples=[
-                            ["data/pneumonia/chest_xray/test/NORMAL/IM-0001-0001.jpeg", self.config.inference.threshold],
-                            ["data/pneumonia/chest_xray/test/PNEUMONIA/person100_bacteria_475.jpeg", self.config.inference.threshold],
-                            ["data/pneumonia/chest_xray/test/PNEUMONIA/person108_bacteria_511.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/test/NORMAL/IM-0001-0001.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/test/NORMAL/IM-0003-0001.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/test/PNEUMONIA/person43_virus_92.jpeg", self.config.inference.threshold],
+                            ["data/pneumonia/test/PNEUMONIA/person108_bacteria_511.jpeg", self.config.inference.threshold],
                         ],
                         inputs=[input_file, threshold_slider],
                         label="Klik salah satu contoh gambar di bawah untuk mencoba langsung:",

@@ -553,7 +553,7 @@
   \end{column}
   \begin{column}{0.24\textwidth}
     \centering \tiny \textbf{(d) Grad-CAM Heatmap}\\
-    Peta aktivasi JET colormap
+    Peta aktivasi INFERNO colormap
   \end{column}
 \end{columns}
 \end{frame}
@@ -562,17 +562,17 @@
 \begin{frame}{EXPLAINABLE AI (XAI) \& SEVERITY SCORING}{Interpretasi Medis Heatmap Grad-CAM \& Tingkat Keparahan Infeksi}
 \begin{columns}[T]
   \begin{column}{0.50\textwidth}
-    \begin{block}{\footnotesize JET Colormap Spectrum Table}
+    \begin{block}{\footnotesize INFERNO Medical Thermal Colormap}
       \centering
       \tiny
       \begin{tabular}{lcl}
         \toprule
         \textbf{Warna} & \textbf{Probabilitas} & \textbf{Interpretasi Klinis} \\
         \midrule
-        \rowcolor{red!20} \textbf{Merah} & $0,8 - 1,0$ & Pusat lesi infeksi / gradien dominan \\
-        \rowcolor{yellow!20} \textbf{Kuning} & $0,6 - 0,8$ & Aktivasi tinggi / margin lesi transisi \\
-        \rowcolor{green!20} \textbf{Hijau} & $0,3 - 0,6$ & Aktivasi sedang / perilesional \\
-        \rowcolor{blue!10} \textbf{Biru} & $0,0 - 0,3$ & Jaringan paru sehat / background \\
+        \rowcolor{yellow!30} \textbf{Kuning/Putih} & $0,8 - 1,0$ & Pusat \textit{hotspot} lesi infeksi berat \\
+        \rowcolor{orange!25} \textbf{Oranye} & $0,6 - 0,8$ & Aktivasi tinggi / margin lesi transisi \\
+        \rowcolor{red!20} \textbf{Merah Tua} & $0,3 - 0,6$ & Aktivasi sedang / perilesional \\
+        \rowcolor{purple!15} \textbf{Hitam/Ungu} & $0,0 - 0,3$ & Jaringan paru sehat / background \\
         \bottomrule
       \end{tabular}
     \end{block}

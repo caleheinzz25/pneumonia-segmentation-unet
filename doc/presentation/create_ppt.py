@@ -613,7 +613,7 @@ def create_presentation():
         ("(a) Citra CXR Asli", "Rontgen mentah pasien"),
         ("(b) PSPNet Lung Mask", "Hasil pemotongan ROI organ"),
         ("(c) Overlay Prediction", "Masker U-Net (Arsir Merah)"),
-        ("(d) Grad-CAM Heatmap", "Peta aktivasi JET colormap")
+        ("(d) Grad-CAM Heatmap", "Peta aktivasi INFERNO colormap")
     ]
 
     for idx, (title, desc) in enumerate(col_desc):
@@ -648,16 +648,16 @@ def create_presentation():
     table_shape = sl13.shapes.add_table(rows, cols, left, top, width, height)
     table = table_shape.table
 
-    jet_headers = ["Warna", "Probabilitas", "Interpretasi Klinis"]
-    jet_data = [
-        ["Merah", "0,8 - 1,0", "Pusat lesi infeksi / gradien dominan"],
-        ["Kuning", "0,6 - 0,8", "Aktivasi tinggi / margin lesi transisi"],
-        ["Hijau", "0,3 - 0,6", "Aktivasi sedang / perilesional"],
-        ["Biru", "0,0 - 0,3", "Jaringan paru sehat / background"]
+    inferno_headers = ["Warna", "Probabilitas", "Interpretasi Klinis"]
+    inferno_data = [
+        ["Kuning / Putih", "0,8 - 1,0", "Pusat hotspot lesi infeksi berat"],
+        ["Oranye", "0,6 - 0,8", "Aktivasi tinggi / margin lesi transisi"],
+        ["Merah Tua", "0,3 - 0,6", "Aktivasi sedang / perilesional"],
+        ["Hitam / Ungu", "0,0 - 0,3", "Jaringan paru sehat / background"]
     ]
-    bg_colors = [RGBColor(254, 226, 226), RGBColor(254, 249, 195), RGBColor(220, 252, 231), RGBColor(224, 242, 254)]
+    bg_colors = [RGBColor(254, 240, 138), RGBColor(253, 186, 116), RGBColor(252, 165, 165), RGBColor(233, 213, 255)]
 
-    for c_idx, h in enumerate(jet_headers):
+    for c_idx, h in enumerate(inferno_headers):
         cell = table.cell(0, c_idx)
         cell.text = h
         cell.fill.solid()
@@ -668,7 +668,7 @@ def create_presentation():
             p.font.bold = True
             p.font.color.rgb = C_WHITE
 
-    for r_idx, row_data in enumerate(jet_data):
+    for r_idx, row_data in enumerate(inferno_data):
         for c_idx, val in enumerate(row_data):
             cell = table.cell(r_idx + 1, c_idx)
             cell.text = val
