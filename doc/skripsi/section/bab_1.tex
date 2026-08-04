@@ -1,0 +1,203 @@
+% ============================================================
+% SKRIPSI - Universitas Gunadarma
+% Program Studi Informatika
+% Format sesuai Buku Pedoman Penulisan Skripsi Prodi Informatika 2025
+%
+% Judul: Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada Menggunakan Arsitektur U-Net Berbasis Convolutional Neural Network (CNN)
+% ============================================================
+
+\documentclass[12pt,a4paper,oneside]{book}
+
+% ---------- Encoding & Font ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}           % Times New Roman
+\usepackage{courier}         % Courier New for code
+
+% ---------- Bahasa Indonesia ----------
+\usepackage[indonesian]{babel}
+
+% ---------- Layout: A4, margins 4-3-4-3 ----------
+\usepackage[
+  a4paper,
+  top     = 4cm,
+  bottom  = 3cm,
+  left    = 4cm,
+  right   = 3cm
+]{geometry}
+
+% ---------- Spacing: 1.5 untuk isi, 1 untuk abstrak ----------
+\usepackage{setspace}
+\setstretch{1.5}
+
+% ---------- Paragraph: no indent, justify ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% ---------- Graphics & Figures ----------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+
+% ---------- Tables & Math ----------
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+% ---------- Harvard Referencing ----------
+\usepackage[backend=biber,style=authoryear,sorting=nyt,maxcitenames=99,giveninits=false,
+  uniquename=false,uniquelist=false,language=english]{biblatex}
+\addbibresource{../references.bib}
+
+% Redefine to use "dan" instead of "&" to match the guidelines
+\renewcommand*{\finalnamedelim}{\addspace dan\space}
+\renewcommand*{\nameyeardelim}{\addcomma\space}
+\DeclareLanguageMapping{indonesian}{english}
+\DefineBibliographyStrings{english}{
+  andothers = {{dkk.}{dkk.}},
+}
+
+% ---------- Captions: 12pt ----------
+\usepackage{caption}
+\captionsetup{
+  font=normalsize,
+  labelfont=bf,
+  justification=centering,
+  labelsep=period
+}
+
+\renewcommand{\thesection}{\thechapter.\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+
+% ---------- Hyperlinks ----------
+\usepackage[hidelinks]{hyperref}
+
+% ---------- Fancy Header (page number top-right for non-chapter pages) ----------
+\usepackage{fancyhdr}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+\fancypagestyle{body}{
+  \fancyhf{}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+% ---------- Chapter Title Formatting: 14pt Bold CAPS centered ----------
+\usepackage{titlesec}
+
+\titleformat{\chapter}[block]
+  {\centering\bfseries\fontsize{14pt}{14pt}\selectfont}
+  {\thechapter.}{0.5em}
+  {\MakeUppercase}
+
+\titlespacing*{\chapter}{0pt}{0pt}{2\baselineskip}
+
+% Section: 12pt Bold, left-aligned
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesection.}{1em}{}
+
+\titlespacing*{\section}{0pt}{1.5\baselineskip}{0.5\baselineskip}
+
+% Subsection: 12pt Bold
+\titleformat{\subsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsection.}{1em}{}
+
+\titlespacing*{\subsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+% Sub-subsection: 12pt Bold
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\fontsize{12pt}{12pt}\selectfont}
+  {\thesubsubsection.}{1em}{}
+
+\titlespacing*{\subsubsection}{0pt}{1\baselineskip}{0.5\baselineskip}
+
+% ---------- TOC Depth (maks 3 level) ----------
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% ---------- Define abstract environment (1 spasi) ----------
+\newenvironment{skripsiabstract}[1]
+  {\begin{center}
+    \bfseries\fontsize{14pt}{14pt}\selectfont\MakeUppercase{#1}
+   \end{center}
+   \vspace{2\baselineskip}
+   \singlespacing
+   \fontsize{12pt}{12pt}\selectfont}
+  {\par\vspace{\baselineskip}}
+
+% ---------- DOCUMENT ----------
+\begin{document}
+\pagestyle{body}
+\pagestyle{body}
+% BAB 1: PENDAHULUAN
+% ============================================================
+\chapter[PENDAHULUAN]{Pendahuluan}
+
+\section{Latar Belakang}
+
+Tingginya angka morbiditas dan mortalitas akibat infeksi pernapasan akut menempatkan kondisi ini sebagai salah satu ancaman kesehatan utama di tingkat global maupun nasional. Berdasarkan laporan terbaru \textit{World Health Organization} (WHO), infeksi ini merenggut sekitar 2,5 juta jiwa di seluruh dunia, dengan porsi terbesar menyerang kelompok rentan seperti anak-anak di bawah usia lima tahun \parencite{who2024}. Di Indonesia, beban penyakit ini juga sangat signifikan dan diperparah oleh keterbatasan sarana penunjang diagnosis medis di daerah perifer \parencite{said2018}. Secara klinis, patologi ini terjadi saat patogen seperti bakteri, virus, atau jamur menginvasi paru-paru dan memicu penumpukan cairan eksudat pada kantung udara (\textit{alveoli}), yang berujung pada kegagalan fungsi ventilasi paru-paru dan sesak napas akut \parencite{seth2022}.
+
+Cara yang paling umum digunakan untuk mendiagnosis pneumonia adalah melalui pemeriksaan foto rontgen dada (\textit{Chest X-Ray}/CXR). Pemeriksaan ini dipilih karena biayanya terjangkau, mudah didapat, dan dosis radiasinya lebih rendah dibandingkan CT Scan. Namun, membaca foto rontgen secara manual memiliki beberapa kelemahan. Radiolog yang kelebihan beban kerja dapat memperlambat proses diagnosis. Selain itu, pola infeksi pneumonia pada foto rontgen kadang mirip dengan penyakit paru lain seperti edema atau efusi pleura, sehingga rawan salah baca — terutama di fasilitas yang kekurangan tenaga ahli. Oleh karena itu, dibutuhkan sistem yang dapat membantu dokter mendeteksi pneumonia secara otomatis agar diagnosis bisa lebih cepat dan konsisten.
+
+Dalam beberapa tahun terakhir, teknologi \textit{deep learning} berbasis \textit{Convolutional Neural Network} (CNN) terbukti mampu menganalisis citra medis dengan tingkat akurasi yang tinggi. Salah satu arsitektur yang banyak digunakan untuk analisis citra medis adalah U-Net, yang diperkenalkan oleh \textcite{ronneberger2015unet}. U-Net memiliki struktur \textit{encoder} untuk mengekstrak fitur dari gambar dan \textit{decoder} untuk mengembalikan informasi spasialnya, dengan \textit{skip connections} yang menghubungkan keduanya agar detail gambar tidak hilang.
+
+Pada penelitian ini, arsitektur U-Net dikombinasikan dengan mekanisme atensi \textit{Spatial and Channel Squeeze-and-Excitation} (sCSE). Mekanisme sCSE membantu model untuk lebih fokus pada area yang mengandung infeksi dan mengabaikan bagian gambar yang tidak relevan, sehingga hasil deteksi menjadi lebih akurat.
+
+Sebagai \textit{encoder}, penelitian ini menggunakan \textit{EfficientNet-B3} yang sudah dilatih sebelumnya menggunakan dataset ImageNet (\textit{transfer learning}). Pendekatan ini dipilih karena dataset medis umumnya terbatas jumlahnya, sehingga memanfaatkan model yang sudah terlatih dapat mempercepat proses belajar dan meningkatkan performa. Selain itu, untuk membantu model hanya fokus pada area paru-paru (bukan seluruh gambar rontgen), digunakan model PSPNet dari pustaka \textit{torchxrayvision} untuk memotong area paru-paru secara otomatis sebelum gambar dimasukkan ke model utama.
+
+Agar hasil deteksi dapat dipahami dan dipercaya oleh pengguna, penelitian ini juga menggunakan teknik \textit{Grad-CAM} (\textit{Gradient-weighted Class Activation Mapping}). Teknik ini menghasilkan peta panas (\textit{heatmap}) yang menunjukkan bagian mana dari gambar yang paling diperhatikan oleh model saat membuat keputusan. Terakhir, seluruh sistem ini dikemas dalam sebuah aplikasi web menggunakan Gradio, sehingga dokter atau tenaga medis bisa langsung mencoba mengunggah foto rontgen dan melihat hasilnya tanpa perlu keahlian teknis khusus.
+
+\section{Rumusan Masalah}
+
+Berdasarkan latar belakang yang telah diuraikan, rumusan masalah dalam penelitian ini adalah sebagai berikut:
+
+\begin{enumerate}
+  \item Bagaimana membangun dan melatih model deteksi pneumonia menggunakan arsitektur \textit{U-Net dengan atensi sCSE} dan \textit{encoder} \textit{EfficientNet-B3} pada dataset RSNA \textit{Pneumonia Detection Challenge}?
+  \item Bagaimana pengaruh penggunaan mekanisme atensi sCSE dan pra-pemrosesan segmentasi paru-paru otomatis terhadap performa model dalam mendeteksi area infeksi pneumonia?
+  \item Bagaimana membangun antarmuka aplikasi web yang dapat menampilkan hasil deteksi beserta visualisasi \textit{Grad-CAM} agar mudah dipahami oleh pengguna?
+\end{enumerate}
+
+\section{Ruang Lingkup}
+
+Ruang lingkup dan batasan masalah dalam penelitian ini adalah:
+
+\begin{enumerate}
+  \item Dataset yang digunakan adalah dataset publik RSNA \textit{Pneumonia Detection Challenge} dari platform Kaggle, terdiri dari sekitar 26.684 citra rontgen dada format DICOM dengan anotasi \textit{bounding box} yang dikonversi menjadi masker biner. Dataset terbagi dalam tiga kategori: \textit{Lung Opacity} (22,5\%), \textit{No Lung Opacity / Not Normal} (27,1\%), dan \textit{Normal} (50,4\%).
+  \item Arsitektur model yang digunakan adalah U-Net dengan mekanisme atensi sCSE dari pustaka \textit{segmentation\_models\_pytorch}, dengan \textit{encoder} EfficientNet-B3 yang telah dilatih sebelumnya menggunakan dataset ImageNet.
+  \item Pra-pemrosesan citra meliputi konversi DICOM, normalisasi intensitas piksel, \textit{resizing} ke ukuran 512 $\times$ 512 piksel, serta segmentasi paru-paru otomatis menggunakan model PSPNet untuk membatasi area input hanya pada region paru-paru.
+  \item Strategi pelatihan menggunakan \textit{transfer learning}, \textit{Automatic Mixed Precision} (AMP), akumulasi gradien, \textit{early stopping}, dan augmentasi data medis (CLAHE, \textit{CoarseDropout}, \textit{GridDistortion}, dan transformasi geometrik).
+  \item Evaluasi performa model menggunakan metrik segmentasi, yaitu \textit{Dice Coefficient}, \textit{Intersection over Union} (IoU), \textit{Precision}, \textit{Recall} (Sensitivitas), \textit{Specificity}, \textit{Accuracy}, dan \textit{Area Under Curve} (AUC).
+  \item Model dilengkapi dengan visualisasi \textit{Grad-CAM} dan antarmuka web interaktif berbasis Gradio yang mendukung format input DICOM, PNG, dan JPEG.
+  \item Implementasi menggunakan Python ($\geq$ 3.10), PyTorch ($\geq$ 2.6), \textit{segmentation\_models\_pytorch}, \textit{Albumentations}, dan Gradio.
+\end{enumerate}
+
+\section{Tujuan Penelitian}
+
+Tujuan dari penelitian ini adalah:
+
+\begin{enumerate}
+  \item Membangun dan melatih model deteksi pneumonia berbasis \textit{U-Net dengan atensi sCSE} dan \textit{encoder} EfficientNet-B3 pada dataset RSNA \textit{Pneumonia Detection Challenge}.
+  \item Mengevaluasi performa model menggunakan metrik segmentasi (terutama \textit{Dice Coefficient}, \textit{Precision}, \textit{Recall}, dan \textit{Specificity}), serta menganalisis pengaruh mekanisme atensi sCSE dan pra-pemrosesan paru-paru otomatis terhadap hasil deteksi.
+  \item Membangun aplikasi web berbasis Gradio yang mengintegrasikan model deteksi dengan visualisasi \textit{Grad-CAM} sehingga hasilnya mudah dipahami oleh pengguna.
+\end{enumerate}
+
+\section{Sistematika Penulisan}
+
+Penulisan skripsi ini dibagi dalam lima bab. Bab I berisi pendahuluan yang menjelaskan latar belakang masalah, rumusan masalah, ruang lingkup, dan tujuan penelitian. Bab II membahas landasan teori yang digunakan dalam penelitian, meliputi pneumonia, citra rontgen dada, arsitektur U-Net dengan atensi sCSE, \textit{transfer learning}, metodologi CRISP-DM, metrik evaluasi, serta penelitian-penelitian sebelumnya yang relevan. Bab III menjelaskan metode dan tahapan penelitian, mulai dari persiapan data, perancangan model, konfigurasi pelatihan, hingga pengembangan antarmuka aplikasi. Bab IV menyajikan hasil eksperimen, analisis kuantitatif menggunakan metrik Precision, Recall, dan Specificity, serta tampilan antarmuka aplikasi web. Bab V menyampaikan kesimpulan dari penelitian dan saran untuk pengembangan lebih lanjut.
+
+% ============================================================
+\end{document}
