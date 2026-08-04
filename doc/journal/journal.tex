@@ -1,0 +1,730 @@
+% ============================================================================
+% Template Jurnal Penulisan Ilmiah - Teknik Informatika
+% Universitas Gunadarma
+%
+% Judul: Deteksi Area Infeksi Pneumonia pada Citra Rontgen Dada
+%        Menggunakan Arsitektur U-Net Berbasis Convolutional Neural Network (CNN)
+% Penulis: Muhammad Hisyam (51422075)
+% Pembimbing: Dr. Tavipia Rumambi, SKom., MMSI.
+% ============================================================================
+\documentclass[12pt,a4paper,twocolumn]{article}
+
+% --- Packages ---------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[indonesian]{babel}       % Bahasa Indonesia support
+\usepackage{mathptmx}                % Times New Roman font
+\usepackage{geometry}                % Page margins
+\usepackage{setspace}                % Line spacing
+\usepackage{graphicx}                % Images
+\usepackage{amsmath,amssymb}         % Mathematical equations
+\usepackage{caption}                 % Caption formatting
+\usepackage{natbib}                  % Author-date citation style
+\usepackage{url}                     % URL formatting
+\usepackage{booktabs}                % Professional tables
+\usepackage{array}                   % Extended table columns
+\usepackage{titlesec}                % Section title formatting
+\usepackage{fancyhdr}                % Headers and footers
+\usepackage{abstract}                % Abstract formatting
+\usepackage{indentfirst}             % Indent first paragraph of sections
+\usepackage{tabularx}                % Flexible-width tables
+\usepackage{multirow}                % Multi-row cells in tables
+\usepackage{float}                   % Force float placement with [H]
+\usepackage{hyperref}                % Hyperlinks (load last)
+
+% --- Compat Macros (biblatex-style commands mapped to natbib) ----------------
+\newcommand{\parencite}[1]{\citep{#1}}
+\newcommand{\textcite}[1]{\citet{#1}}
+
+% --- Path Gambar -------------------------------------------------------------
+\graphicspath{{../img/}{gambar/}}
+
+% --- Page Layout ------------------------------------------------------------
+\geometry{
+    a4paper,
+    left   = 3cm,
+    right  = 3cm,
+    top    = 3cm,
+    bottom = 3cm
+}
+
+% --- Spacing ----------------------------------------------------------------
+\onehalfspacing                      % 1.5 line spacing
+\setlength{\columnsep}{1cm}          % Column separation
+
+% --- Section Formatting -----------------------------------------------------
+\titleformat{\section}
+    {\normalfont\normalsize\bfseries\MakeUppercase}
+    {}
+    {0pt}
+    {}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+\titleformat{\subsection}
+    {\normalfont\normalsize\bfseries}
+    {}
+    {0pt}
+    {}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% Remove section numbering as per journal format
+\setcounter{secnumdepth}{0}
+
+% --- Caption Formatting -----------------------------------------------------
+\captionsetup{
+    font       = {small},
+    labelfont  = {bf},
+    labelsep   = period,
+    justification = centering,
+    singlelinecheck = false
+}
+\captionsetup[table]{position = above}
+\captionsetup[figure]{position = below}
+
+% --- Citation & Bibliography Style ------------------------------------------
+\bibliographystyle{apalike}
+
+% --- Hyperlink Setup --------------------------------------------------------
+\hypersetup{
+    colorlinks  = true,
+    linkcolor   = black,
+    citecolor   = black,
+    urlcolor    = blue
+}
+
+% ============================================================================
+% DOCUMENT START
+% ============================================================================
+\begin{document}
+
+% --- Title ------------------------------------------------------------------
+\twocolumn[
+\begin{@twocolumnfalse}
+\begin{center}
+
+% JUDUL
+{\bfseries DETEKSI AREA INFEKSI PNEUMONIA PADA CITRA RONTGEN DADA \\
+MENGGUNAKAN ARSITEKTUR U-NET BERBASIS CONVOLUTIONAL NEURAL NETWORK (CNN)}
+
+\vspace{12pt}
+
+% AUTHORS
+{\normalsize
+Muhammad Hisyam\textsuperscript{1},\quad Dr.\ Tavipia Rumambi, SKom., MMSI.\textsuperscript{2}
+}
+
+\vspace{8pt}
+
+% AFFILIATIONS
+{\small
+\textsuperscript{1,2}Fakultas Teknologi Industri, Universitas Gunadarma\\
+Jl.\ Margonda Raya No.\ 100, Depok 16424, Jawa Barat\\[4pt]
+\textsuperscript{1}\texttt{51422075@student.gunadarma.ac.id},\quad
+\textsuperscript{2}\texttt{tavipia@staff.gunadarma.ac.id}
+}
+
+\vspace{16pt}
+
+% --- ABSTRAK (Bahasa Indonesia) -------------------------------------------
+\begin{minipage}{0.85\textwidth}
+\begin{center}
+    {\normalsize\bfseries ABSTRAK}
+\end{center}
+\vspace{-14pt}
+{\footnotesize\itshape\singlespacing
+Tingginya angka kematian akibat pneumonia di seluruh dunia---terutama
+pada anak-anak, lansia, dan pasien imunokompromais---serta keterbatasan
+interpretasi manual citra \textit{Chest X-Ray} (CXR) mendorong kebutuhan
+sistem deteksi otomatis berbasis \textit{deep learning}. Penelitian ini
+membangun sistem segmentasi otomatis area infeksi pneumonia pada CXR
+menggunakan kerangka \textbf{CRISP-DM}. Strategi \textit{dual masking}
+diterapkan: masker paru-paru dari model \textbf{PSPNet}
+(\textit{torchxrayvision}) membatasi wilayah analisis, sementara masker
+bounding box RSNA menjadi \textit{ground truth} pelatihan. Segmentasi
+dilakukan menggunakan arsitektur \textbf{U-Net dengan mekanisme atensi
+sCSE} (\textit{Spatial and Channel Squeeze-and-Excitation}) dan
+\textit{backbone} \textbf{EfficientNet-B3} \textit{pretrained} ImageNet.
+Model dilatih pada dataset \textbf{RSNA Pneumonia Detection Challenge}
+(26.684 citra DICOM) menggunakan \textbf{Unified Focal Loss}, optimizer
+AdamW, \textit{Automatic Mixed Precision} (AMP), dan akumulasi gradien.
+Keterjelasan model difasilitasi \textbf{Grad-CAM}, dan hasil diintegrasikan
+ke antarmuka web \textbf{Gradio} yang dapat diakses publik melalui
+\textbf{Cloudflare Tunnel}. Evaluasi kuantitatif menunjukkan \textit{Dice
+Coefficient} \textbf{0,6234}, \textit{Precision} \textbf{0,6868},
+\textit{Recall} \textbf{0,7082}, dan \textit{Specificity} \textbf{0,9781},
+membuktikan potensi sistem sebagai alat bantu skrining klinis yang efektif
+dan transparan.
+\par}
+
+\vspace{6pt}
+{\footnotesize\textbf{Kata Kunci:} \textit{Deep Learning, EfficientNet-B3, Pneumonia, sCSE, U-Net.}}
+\end{minipage}
+
+\vspace{16pt}
+
+% --- ABSTRACT (English) ---------------------------------------------------
+\begin{minipage}{0.85\textwidth}
+\begin{center}
+    {\normalsize\bfseries ABSTRACT}
+\end{center}
+\vspace{-14pt}
+{\footnotesize\itshape\singlespacing
+The high global mortality caused by pneumonia---particularly among children,
+the elderly, and immunocompromised patients---combined with limitations of
+manual chest X-ray (CXR) interpretation, drives the demand for automated
+deep learning-based detection systems. This study develops an automatic
+pneumonia infection segmentation system on CXR images following the
+\textbf{CRISP-DM} framework. A \textit{dual-masking} strategy is applied:
+lung masks generated by \textbf{PSPNet} (\textit{torchxrayvision}) constrain
+the analysis region, while RSNA bounding-box annotations serve as training
+ground truth. Segmentation is performed using a \textbf{U-Net with sCSE}
+(\textit{Spatial and Channel Squeeze-and-Excitation}) \textbf{attention} and
+a \textbf{pretrained EfficientNet-B3} backbone trained on the \textbf{RSNA
+Pneumonia Detection Challenge} dataset (26,684 DICOM images) using
+\textbf{Unified Focal Loss}, AdamW optimizer, Automatic Mixed Precision
+(AMP), and gradient accumulation. Model explainability is facilitated by
+\textbf{Grad-CAM}, and the system is integrated into a \textbf{Gradio} web
+interface accessible publicly via \textbf{Cloudflare Tunnel}. Quantitative
+evaluation yields a \textit{Dice Coefficient} of \textbf{0.6234},
+\textit{Precision} of \textbf{0.6868}, \textit{Recall} of \textbf{0.7082},
+and \textit{Specificity} of \textbf{0.9781}, demonstrating the system's
+potential as an effective and transparent clinical screening aid.
+\par}
+
+\vspace{6pt}
+{\footnotesize\textbf{Keywords:} \textit{Deep Learning, EfficientNet-B3, Pneumonia, sCSE, U-Net.}}
+\end{minipage}
+
+\vspace{20pt}
+
+\end{center}
+\end{@twocolumnfalse}
+]
+
+% ============================================================================
+% PENDAHULUAN
+% ============================================================================
+\section{Pendahuluan}
+
+Pneumonia merupakan infeksi saluran pernapasan akut yang menyerang paru-paru
+dan menjadi salah satu penyebab kematian utama di tingkat global. Berdasarkan
+data \textit{World Health Organization} (WHO), infeksi ini merenggut sekitar
+2,5 juta jiwa di seluruh dunia pada tahun 2019, dengan porsi terbesar
+menyerang anak-anak di bawah usia lima tahun \parencite{who2022}. Di
+Indonesia, beban penyakit ini diperparah oleh keterbatasan tenaga ahli
+radiologi di daerah perifer \parencite{said2018}. Secara klinis, pneumonia
+terjadi saat patogen menginvasi alveoli paru-paru, memicu penumpukan eksudat
+yang mengganggu ventilasi \parencite{seth2022}.
+
+Diagnosis pneumonia umumnya dilakukan melalui foto rontgen dada (\textit{Chest
+X-Ray}/CXR). Meskipun efisien dari segi biaya dan dosis radiasi, interpretasi
+manual CXR memiliki kelemahan: beban kerja radiolog yang tinggi, serta pola
+infeksi pneumonia yang kadang menyerupai penyakit paru lain seperti edema atau
+efusi pleura, sehingga rawan terjadi kesalahan---terutama di fasilitas dengan
+keterbatasan sumber daya manusia.
+
+Perkembangan \textit{deep learning} berbasis \textit{Convolutional Neural
+Network} (CNN) terbukti mampu menganalisis citra medis dengan akurasi tinggi.
+Arsitektur U-Net \parencite{ronneberger2015unet} menjadi pilihan utama untuk
+segmentasi citra medis berkat kemampuannya mempertahankan detail spasial
+melalui \textit{skip connections}. Berbagai penelitian terdahulu (dirangkum
+pada Tabel~\ref{tab:penelitian_terdahulu}) telah mengembangkan metode deteksi
+pneumonia berbasis \textit{deep learning}, namun mengidentifikasi empat celah
+riset utama: (1) kurangnya strategi generalisasi berbasis \textit{lung
+masking}; (2) keterbatasan lokalisasi lesi tanpa mekanisme atensi; (3) tidak
+adanya \textit{pipeline} kuantifikasi klinis terintegrasi; dan (4) belum
+optimalnya efisiensi komputasi pada GPU terbatas.
+
+\begin{table}[H]
+  \centering
+  \caption{Perbandingan Penelitian Terdahulu Deteksi Pneumonia.}
+  \label{tab:penelitian_terdahulu}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{p{2cm} p{1.5cm} p{2.5cm} p{2cm}}
+    \toprule
+    \textbf{Peneliti} & \textbf{Tahun} & \textbf{Metode} & \textbf{Metrik Terbaik} \\
+    \midrule
+    Teixeira dkk. & 2021 & VGG + Lung Seg & Acc 94,1\% \\
+    Degerli dkk.  & 2022 & OSegNet (Op. Layer) & Dice 0,638 \\
+    Farag dkk.    & 2020 & MultiCheXNet MTL & AUC 0,94 \\
+    Dang dkk.     & 2025 & CAD-Unet (Capsule) & Dice 0,791* \\
+    Zhang dkk.    & 2023 & CXR-Net E-D-E & AUC 0,963 \\
+    Mallidi       & 2024 & U-Net + VGG16 & Dice 0,612 \\
+    \textbf{Kami} & \textbf{2026} & \textbf{U-Net sCSE + EffB3} & \textbf{Dice 0,623} \\
+    \bottomrule
+    \multicolumn{4}{l}{\small *Dataset CT, bukan CXR.}
+  \end{tabular}
+  }
+\end{table}
+
+Penelitian ini mengembangkan sistem yang menjawab celah tersebut dengan
+mengombinasikan arsitektur U-Net dengan mekanisme atensi sCSE
+\parencite{roy2018scse}, \textit{backbone} EfficientNet-B3 \parencite{tan2019efficientnet},
+strategi \textit{dual lung masking} berbasis PSPNet \parencite{teixeira2020},
+Grad-CAM \parencite{selvaraju2017gradcam}, serta antarmuka web Gradio
+berbasis Cloudflare Tunnel \parencite{cloudflare2024}.
+
+\textbf{Rumusan Masalah.} Penelitian ini menjawab tiga pertanyaan: (1)
+Bagaimana membangun model deteksi pneumonia U-Net sCSE dengan \textit{backbone}
+EfficientNet-B3 pada dataset RSNA? (2) Bagaimana pengaruh atensi sCSE dan
+\textit{lung masking} terhadap performa deteksi? (3) Bagaimana membangun
+antarmuka web yang menyajikan Grad-CAM dan analisis kuantitatif secara
+transparan?
+
+\textbf{Tujuan.} Menghasilkan alat bantu skrining awal (\textit{triase})
+berbasis web yang akurat, transparan, dan dapat diakses secara publik untuk
+membantu tenaga medis mendeteksi dan mengkuantifikasi area infeksi pneumonia
+pada CXR.
+
+% ============================================================================
+% METODE PENELITIAN
+% ============================================================================
+\section{Metode Penelitian}
+
+Penelitian dilaksanakan menggunakan kerangka \textbf{CRISP-DM}
+(\textit{Cross-Industry Standard Process for Data Mining}), yang mencakup
+enam tahap iteratif: Pemahaman Bisnis, Pemahaman Data, Persiapan Data,
+Pemodelan, Evaluasi, dan Penerapan \parencite{batta2020}.
+
+\subsection{Alur Penelitian dan Arsitektur Sistem}
+
+Alur penelitian ditunjukkan pada Gambar~\ref{fig:flowchart_penelitian}. Citra
+CXR masukan terlebih dahulu diproses oleh modul \textit{lung masking} berbasis
+PSPNet untuk memisahkan rongga paru dari organ luar
+\parencite{teixeira2020,azimi2022}. Citra terpotong kemudian dimasukkan ke
+model U-Net sCSE dengan \textit{encoder} EfficientNet-B3.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{flowchart_penelitian.png}
+  \caption{Alur Penelitian Deteksi Pneumonia Berbasis CRISP-DM.}
+  \label{fig:flowchart_penelitian}
+\end{figure}
+
+Arsitektur sistem terdiri dari empat modul terintegrasi (Gambar~\ref{fig:arsitektur_sistem}):
+(1) Modul Pra-pemrosesan \& \textit{Lung Masking} PSPNet; (2) Modul Segmentasi
+U-Net sCSE; (3) Modul Keterjelasan Grad-CAM; dan (4) Modul Antarmuka Web Gradio.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{arsitektur_sistem.png}
+  \caption{Arsitektur Sistem Deteksi Pneumonia Empat Modul.}
+  \label{fig:arsitektur_sistem}
+\end{figure}
+
+\subsection{Arsitektur U-Net dengan Atensi sCSE dan Backbone EfficientNet-B3}
+
+Arsitektur U-Net (Gambar~\ref{fig:arsitektur_unet}) membentuk struktur simetris
+huruf ``U'' yang terdiri atas jalur kontraksi (\textit{encoder}) dan jalur
+ekspansi (\textit{decoder}) yang dihubungkan oleh \textit{skip connections}
+\parencite{ronneberger2015unet}. Sebagai \textit{encoder}, digunakan
+EfficientNet-B3 yang memanfaatkan teknik \textit{Compound Scaling} untuk
+menyeimbangkan kedalaman, lebar, dan resolusi jaringan secara bersamaan
+\parencite{tan2019efficientnet} (Gambar~\ref{fig:arsitektur_efficientnet}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{arsitektur_unet.png}
+    \caption{Struktur Arsitektur U-Net dengan \textit{Skip Connections}.}
+    \label{fig:arsitektur_unet}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{arsitektur_efficientnet.png}
+    \caption{Konsep \textit{Compound Scaling} pada EfficientNet-B3.}
+    \label{fig:arsitektur_efficientnet}
+\end{figure}
+
+Mekanisme atensi \textit{Spatial and Channel Squeeze-and-Excitation} (sCSE)
+diintegrasikan pada setiap blok \textit{decoder} \parencite{roy2018scse}
+(Gambar~\ref{fig:mekanisme_scse}). Modul sCSE menggabungkan atensi saluran
+(cSE---channel-wise global average pooling + MLP) dan atensi spasial
+(sSE---konvolusi $1 \times 1$) secara paralel, yang secara adaptif menonjolkan
+fitur lesi \textit{Ground-Glass Opacities} (GGO) sekaligus menekan fitur
+tulang rusuk yang redundan.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]{mekanisme_scse.png}
+    \caption{Alur Kerja Modul Atensi sCSE (cSE + sSE secara Paralel).}
+    \label{fig:mekanisme_scse}
+\end{figure}
+
+Total parameter model: \textbf{13.222.695}. Kepala bantu (\textit{auxiliary
+supervision head}) ditambahkan dengan bobot $\lambda_{\text{aux}} = 0{,}3$
+untuk memperkuat sinyal gradien pada lapisan dalam.
+
+\subsection{Fungsi Kerugian Unified Focal Loss}
+
+Untuk mengatasi ketimpangan kelas ekstrem antara piksel paru sehat yang
+mendominasi dengan piksel infeksi pneumonia yang jauh lebih sedikit, digunakan
+\textbf{Unified Focal Loss} \parencite{yeung2022unifiedfocal}:
+\begin{equation}
+  L_{\text{unified}} = 0{,}5 \cdot L_{\text{Focal}} + 0{,}5 \cdot L_{\text{FT}}
+\end{equation}
+di mana $L_{\text{Focal}}$ mengurangi bobot piksel latar belakang yang mudah
+diprediksi dengan faktor $(1 - p_t)^{\gamma}$ ($\gamma = 2{,}0$;
+$\alpha = 0{,}25$), dan $L_{\text{FT}}$ (\textit{Focal Tversky Loss})
+mengoptimalkan indeks Tversky dengan $\alpha = 0{,}3$ (penalti
+\textit{false negative}) dan $\beta = 0{,}7$ (penalti \textit{false positive})
+untuk menekan tingkat alarm palsu.
+
+\subsection{Dataset RSNA dan Pra-pemrosesan}
+
+Dataset yang digunakan adalah \textbf{RSNA Pneumonia Detection Challenge}
+yang terdiri dari 26.684 citra DICOM. Distribusi kelas dataset ditunjukkan
+pada Tabel~\ref{tab:distribusi_dataset}.
+
+\begin{table}[H]
+  \centering
+  \caption{Distribusi Kelas Dataset RSNA Pneumonia.}
+  \label{tab:distribusi_dataset}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{l c r}
+    \toprule
+    \textbf{Kelas} & \textbf{Jumlah} & \textbf{Persentase} \\
+    \midrule
+    Lung Opacity (Pneumonia)       & 6.012  & 22,5\% \\
+    No Lung Opacity / Not Normal   & 7.210  & 27,1\% \\
+    Normal                         & 13.462 & 50,4\% \\
+    \midrule
+    \textbf{Total}                 & \textbf{26.684} & \textbf{100\%} \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+Dataset dibagi secara stratifikasi pada level pasien: \textbf{5.344 pasien
+latih} dan \textbf{1.336 pasien validasi} (rasio 80:20) untuk mencegah
+kebocoran data. Pra-pemrosesan mencakup: (1) ekstraksi array piksel dari berkas
+DICOM; (2) normalisasi intensitas Min-Max dan penyesuaian ke $512 \times 512$
+piksel; (3) normalisasi mean/std ImageNet; (4) segmentasi paru otomatis
+menggunakan PSPNet (\textit{threshold} 0,5); dan (5) konversi koordinat
+\textit{bounding box} menjadi masker biner $512 \times 512$.
+
+Augmentasi data medis diterapkan menggunakan pustaka \textit{Albumentations}
+\parencite{seth2022}, meliputi: \textit{Horizontal/Vertical Flip},
+\textit{ShiftScaleRotate} (${\le}10^{\circ}$), \textit{RandomBrightnessContrast},
+\textit{RandomGamma}, CLAHE, \textit{GaussNoise}, \textit{GridDropout}, dan
+\textit{CoarseDropout}.
+
+\subsection{Konfigurasi Pelatihan}
+
+Pelatihan menggunakan strategi dua fase: (1) Fase \textit{warmup} (Epoch 1--12):
+\textit{encoder} dibekukan sehingga \textit{decoder} beradaptasi tanpa merusak
+bobot pra-latih; (2) Fase \textit{fine-tuning} (Epoch 13+): seluruh jaringan
+dilatih \textit{end-to-end} dengan \textit{learning rate} diferensial.
+Konfigurasi lengkap disajikan pada Tabel~\ref{tab:konfigurasi_pelatihan}.
+
+\begin{table}[H]
+  \centering
+  \caption{Konfigurasi Pelatihan Model U-Net sCSE.}
+  \label{tab:konfigurasi_pelatihan}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Parameter} & \textbf{Nilai} \\
+    \midrule
+    Optimizer                  & AdamW \\
+    \textit{Learning Rate} (Decoder) & $4 \times 10^{-4}$ \\
+    \textit{Learning Rate} (Encoder) & $8 \times 10^{-6}$ \\
+    \textit{Weight Decay}      & $5 \times 10^{-4}$ \\
+    Scheduler                  & Cosine Annealing ($\eta_{\min}=10^{-6}$) \\
+    Batch Size (Fisik)         & 8 \\
+    Akumulasi Gradien          & 4 langkah (batch efektif 32) \\
+    \textit{Mixed Precision}   & AMP FP16 \\
+    \textit{Exponential Moving Average} & EMA (\textit{decay} 0,999) \\
+    \textit{Early Stopping}    & \textit{Patience} 35 epoch \\
+    Maksimum Epoch             & 100 \\
+    Fase \textit{Warmup}       & 12 epoch (\textit{encoder} dibekukan) \\
+    Hardware                   & NVIDIA RTX 3070 (8 GB VRAM) \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\subsection{Metrik Evaluasi dan Test-Time Augmentation}
+
+Performa model diukur menggunakan empat metrik segmentasi: \textit{Dice
+Coefficient}, \textit{Precision}, \textit{Recall} (Sensitivitas), dan
+\textit{Specificity}. Semua metrik dihitung sebagai rata-rata per sampel
+(\textit{per-image mean}) atas 1.336 citra validasi.
+
+Untuk meningkatkan kekokohan prediksi, diterapkan \textbf{Test-Time
+Augmentation} (TTA) yang merata-rata prediksi dari tiga transformasi berbeda:
+citra asli, \textit{horizontal flip}, dan \textit{vertical flip}.
+
+\subsection{Pemodelan UML Sistem}
+
+Interaksi tenaga medis dengan aplikasi dirancang menggunakan \textit{Use Case
+Diagram} (Gambar~\ref{fig:use_case_diagram}) yang menyediakan enam fungsi utama:
+unggah citra (DICOM/PNG/JPG), atur \textit{threshold}, analisis file, lihat
+visualisasi \textit{overlay} \& Grad-CAM, lihat laporan keparahan \&
+lateralitas, dan \textit{reset}. Alur logika inferensi dimodelkan melalui
+\textit{Activity Diagram} (Gambar~\ref{fig:activity_diagram}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{use_case_diagram.png}
+  \caption{\textit{Use Case Diagram} Antarmuka Web Gradio (6 Use Case).}
+  \label{fig:use_case_diagram}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{activity_diagram.png}
+  \caption{\textit{Activity Diagram} Alur Inferensi dan Analisis Sistem.}
+  \label{fig:activity_diagram}
+\end{figure}
+
+% ============================================================================
+% PEMBAHASAN
+% ============================================================================
+\section{Pembahasan}
+
+\subsection{Hasil Pelatihan Model}
+
+Proses pelatihan berlangsung selama \textbf{81 epoch} dan dihentikan secara
+otomatis oleh mekanisme \textit{early stopping} (patience 35). Model terbaik
+(\textit{best checkpoint}) diperoleh pada \textbf{Epoch ke-46} dengan nilai
+\textit{Validation Loss} terendah sebesar \textbf{0,2755} (\textit{Train Loss}
+= 0,2659) dan \textit{Validation Dice} sebesar 0,6203. Kurva penurunan
+\textit{loss} selama 81 epoch ditunjukkan pada Gambar~\ref{fig:kurva_pelatihan}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{kurva_pelatihan.png}
+  \caption{Kurva \textit{Loss} Pelatihan dan Validasi selama 81 Epoch
+           (\textit{Best Model} Epoch 46, Val Loss = 0,2755).}
+  \label{fig:kurva_pelatihan}
+\end{figure}
+
+Pada Epoch 1--12 (\textit{warmup}), \textit{encoder} dibekukan sehingga
+\textit{decoder} dapat beradaptasi tanpa merusak bobot pra-latih ImageNet.
+Setelah \textit{encoder} dibuka pada Epoch 13, terjadi penurunan \textit{loss}
+validasi secara tajam, membuktikan efektivitas \textit{transfer learning}
+EfficientNet-B3 sebagai \textit{encoder} yang kaya fitur.
+
+\subsection{Evaluasi Kuantitatif}
+
+Hasil evaluasi kuantitatif model terbaik pada 1.336 citra validasi (metode
+rata-rata per sampel/\textit{per-image mean}) dirangkum pada
+Tabel~\ref{tab:eval_results}.
+
+\begin{table}[H]
+  \centering
+  \caption{Hasil Evaluasi Kuantitatif Model U-Net sCSE (Epoch 46).}
+  \label{tab:eval_results}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{l c p{3.5cm}}
+    \toprule
+    \textbf{Metrik} & \textbf{Nilai} & \textbf{Interpretasi} \\
+    \midrule
+    \textit{Dice Coefficient}  & \textbf{0,6234} & Kemiripan prediksi vs \textit{ground truth} \\
+    \textit{Precision}         & \textbf{0,6868} & Kebenaran area yang diprediksi pneumonia \\
+    \textit{Recall}            & \textbf{0,7082} & Sensitivitas deteksi lesi pneumonia \\
+    \textit{Specificity}       & \textbf{0,9781} & Kebenaran identifikasi area paru sehat \\
+    \textit{Validation Loss}   & \textbf{0,2755} & Nilai \textit{Unified Focal Loss} \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+Keseimbangan antara \textit{Recall} (70,82\%) dan \textit{Precision} (68,68\%)
+menunjukkan model sangat sensitif dalam mendeteksi bercak pneumonia sekaligus
+efektif menekan \textit{false alarm}. Nilai \textit{Specificity} yang sangat
+tinggi (97,81\%) memastikan area paru sehat tidak salah diarsir, yang sangat
+penting dalam konteks skrining klinis untuk meminimalkan tindak lanjut yang
+tidak perlu.
+
+\subsection{Confusion Matrix Tingkat Piksel}
+
+Matriks kebingungan (\textit{confusion matrix}) pada tingkat piksel dari total
+350.224.384 piksel validasi ditunjukkan pada Gambar~\ref{fig:confusion_matrix}.
+Model berhasil mengenali \textbf{20.745.986 piksel TP} dan
+\textbf{312.284.691 piksel TN}, dengan \textit{false positive} sebanyak
+7.198.145 piksel dan \textit{false negative} sebanyak 9.995.562 piksel.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\linewidth,height=0.32\textheight,keepaspectratio]{confusion_matrix.png}
+  \caption{\textit{Confusion Matrix} Tingkat Piksel pada Data Validasi
+           (Total 350,2 Juta Piksel).}
+  \label{fig:confusion_matrix}
+\end{figure}
+
+Analisis pengaruh nilai ambang batas (\textit{threshold}) prediksi menunjukkan
+bahwa nilai \textbf{0,65} merupakan titik optimal yang menyeimbangkan
+\textit{Recall} dan \textit{Precision} pada kurva ROC, dipilih sebagai
+\textit{default threshold} pada antarmuka web.
+
+\subsection{Visualisasi Segmentasi dan Analisis Per Kasus}
+
+Visualisasi komparatif segmentasi pada empat sampel citra uji
+(Gambar~\ref{fig:hasil_segmentasi_visual}) mencakup: (a)~citra asli; (b)~hasil
+\textit{lung masking} PSPNet; (c)~\textit{overlay} segmentasi merah; dan
+(d)~\textit{probability heatmap}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{hasil_segmentasi_visual.png}
+  \caption{Visualisasi Komparatif Hasil Segmentasi: (1) Normal,
+           (2) Pneumonia Virus Ringan, (3) Pneumonia Virus Sedang,
+           (4) Pneumonia Bakteri Berat.}
+  \label{fig:hasil_segmentasi_visual}
+\end{figure}
+
+Analisis visual menunjukkan: (1) \textbf{Normal}: masker prediksi bersih
+(0\% infeksi) dan \textit{heatmap} biru merata, tanpa \textit{false positive};
+(2) \textbf{Pneumonia Ringan}: arsir merah minor (${\le}5\%$) terlokalisasi
+di satu lobus; (3) \textbf{Pneumonia Sedang}: infeksi bilateral (5\%--15\%)
+tersebar di kedua belah paru; (4) \textbf{Pneumonia Berat}: arsir merah luas
+(${>}15\%$) menutupi area konsolidasi bakteri yang pekat. Kegagalan deteksi
+(\textit{false negative}) umumnya terjadi pada lesi di batas jantung/hilus
+(\textit{cardiac border/hilar}) akibat kesamaan intensitas dengan struktur
+normal.
+
+\subsection{Analisis Keterjelasan Model (Grad-CAM)}
+
+Visualisasi Grad-CAM \parencite{selvaraju2017gradcam} dihitung dari lapisan
+konvolusi terakhir \textit{encoder} EfficientNet-B3 dan diwarnai menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}). Peta aktivasi secara konsisten menunjukkan warna kuning cerah/putih pada pusat \textit{hotspot} opasitas abnormal serta merah/oranye pada daerah perilesional, sementara jaringan paru sehat tetap berwarna gelap. Hal ini membuktikan bahwa model membuat keputusan berdasarkan fitur medis yang valid (bercak paru) dan bukan dari artefak radiologi (teks, kabel elektroda, atau tepi tulang rusuk). Hal ini meningkatkan kepercayaan klinis terhadap prediksi model.
+
+\subsection{Analisis Keparahan dan Lateralitas Infeksi}
+
+Sistem mengimplementasikan kuantifikasi klinis berbasis rasio area infeksi
+terhadap area paru, yang diklasifikasikan ke dalam lima tingkat keparahan
+(Tabel~\ref{tab:tingkat_keparahan}). Selain itu, distribusi spasial infeksi
+dianalisis untuk menentukan lateralitas: \textit{Left}, \textit{Right}, atau
+\textit{Bilateral}.
+
+\begin{table}[H]
+  \centering
+  \caption{Klasifikasi Tingkat Keparahan Infeksi Pneumonia.}
+  \label{tab:tingkat_keparahan}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{l c l}
+    \toprule
+    \textbf{Tingkat} & \textbf{Rasio Infeksi} & \textbf{Interpretasi Klinis} \\
+    \midrule
+    Normal   & 0\%           & Tidak terdeteksi infeksi \\
+    Ringan   & ${\le}5\%$    & Lesi fokal kecil, satu lobus \\
+    Sedang   & 5\%--15\%     & Lesi multilobar atau bilateral \\
+    Berat    & 15\%--30\%    & Konsolidasi ekstensif \\
+    Kritis   & ${>}30\%$     & Penyebaran menyeluruh \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+\subsection{Demonstrasi Antarmuka Web Gradio dan Deployment}
+
+Antarmuka web berbasis Gradio berhasil dibangun (Gambar~\ref{fig:implementasi_web_gradio}).
+Pengguna dapat mengunggah citra rontgen (DICOM/PNG/JPEG), menggeser
+\textit{threshold} (0,1--0,9), dan memperoleh empat keluaran visual
+(\textit{overlay}, Grad-CAM INFERNO, \textit{lung mask}, \textit{isolated lung})
+serta laporan kuantitatif (status diagnosis, derajat keparahan, persentase
+infeksi, lateralitas, dan skor rerata kepercayaan) dalam waktu inferensi
+\textbf{1--3 detik} pada GPU RTX 3070.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{implementasi_web_gradio.png}
+  \caption{Tampilan Antarmuka Web Gradio dan Hasil Analisis \textit{Real-Time}.}
+  \label{fig:implementasi_web_gradio}
+\end{figure}
+
+Penyebaran publik dilakukan menggunakan \textbf{Cloudflare Tunnel}
+(\texttt{cloudflared}) \parencite{cloudflare2024}
+(Gambar~\ref{fig:cloudflare_tunnel}). Daemon \textit{cloudflared} membuka
+terowongan keluar terenkripsi (HTTPS/QUIC) ke jaringan \textit{edge} Cloudflare
+di \url{https://grad.mhisyam.com}, mengatasi pembatasan IP publik tanpa
+memerlukan \textit{port forwarding} pada \textit{router}, sehingga GPU lokal
+dapat melayani pengguna eksternal secara aman.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{cloudflare_tunnel.png}
+  \caption{Skema Penyebaran Web Gradio Menggunakan Cloudflare Tunnel.}
+  \label{fig:cloudflare_tunnel}
+\end{figure}
+
+\subsection{Pengujian Fungsionalitas (Black-Box Testing)}
+
+Pengujian fungsionalitas antarmuka menggunakan metode \textit{black-box testing}
+mencakup delapan skenario: (1) unggah berkas DICOM; (2) unggah berkas
+PNG/JPEG; (3) atur nilai \textit{threshold}; (4) eksekusi analisis; (5) ekstraksi
+paru PSPNet; (6) segmentasi \& Grad-CAM; (7) laporan metrik keparahan; dan
+(8) penanganan galat (\textit{error handling}). Seluruh delapan skenario
+dinyatakan \textbf{BERHASIL} dengan hasil sesuai harapan.
+
+\subsection{Studi Ablasi Komponen}
+
+Studi ablasi (\textit{ablation study}) dilakukan untuk mengukur kontribusi
+setiap komponen utama sistem. Hasil ditunjukkan pada
+Tabel~\ref{tab:ablation_study}.
+
+\begin{table}[H]
+  \centering
+  \caption{Studi Ablasi: Dampak Komponen terhadap Performa.}
+  \label{tab:ablation_study}
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{p{3.2cm} c c}
+    \toprule
+    \textbf{Konfigurasi} & \textbf{Val Loss} & \textbf{Dice} \\
+    \midrule
+    \textit{Baseline} (tanpa pra-latih) & 0,3212 & 0,581 \\
+    + Bobot Pra-latih ImageNet          & 0,2944 & 0,608 \\
+    + Atensi sCSE                       & 0,2831 & 0,615 \\
+    + \textit{Unified Focal Loss}       & 0,2789 & 0,619 \\
+    + \textit{Lung Masking} PSPNet      & 0,2767 & 0,621 \\
+    + AMP \& Akumulasi Gradien          & 0,2761 & 0,622 \\
+    \textbf{+ Augmentasi (Full Model)}  & \textbf{0,2755} & \textbf{0,623} \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+Studi ablasi mengonfirmasi bahwa: (1) Bobot pra-latih ImageNet menurunkan
+\textit{val loss} dari 0,3212 ke 0,2944; (2) Atensi sCSE meningkatkan presisi
+batas lesi; (3) \textit{Unified Focal Loss} menjaga sensitivitas \textit{Recall}
+(70,82\%); dan (4) \textit{Lung Masking} PSPNet mengeliminasi \textit{false
+positive} di luar organ paru secara efektif \parencite{bassi2022}.
+
+% ============================================================================
+% PENUTUP
+% ============================================================================
+\section{Penutup}
+
+\textbf{Kesimpulan.} Penelitian ini berhasil membangun sistem deteksi dan
+segmentasi otomatis area infeksi pneumonia menggunakan arsitektur
+\textbf{U-Net dengan atensi sCSE} dan \textit{backbone}
+\textbf{EfficientNet-B3}. Model mencapai kinerja tinggi pada data validasi
+RSNA dengan \textit{Dice Coefficient} \textbf{0,6234}, \textit{Precision}
+\textbf{0,6868}, \textit{Recall} \textbf{0,7082}, dan \textit{Specificity}
+\textbf{0,9781}. Strategi \textit{dual lung masking} berbasis PSPNet terbukti
+efektif mencegah \textit{shortcut learning} dan menekan \textit{false positive}
+di luar organ paru. Mekanisme atensi sCSE meningkatkan akurasi batas lesi.
+Fungsi kerugian \textit{Unified Focal Loss} berhasil menyeimbangkan sensitivitas
+dan spesifisitas pada kondisi data yang sangat tidak seimbang. Visualisasi
+Grad-CAM memberikan transparansi medis yang terverifikasi. Antarmuka web Gradio
+yang dipublikasikan melalui Cloudflare Tunnel mampu menyajikan analisis
+kuantitatif (5 tingkat keparahan dan lateralitas) serta visualisasi klinis
+secara \textit{real-time} (1--3 detik), siap digunakan sebagai alat bantu
+skrining awal (\textit{triase}) medis.
+
+\textbf{Saran.} Untuk pengembangan selanjutnya: (1) Menggunakan dataset dengan
+anotasi manual tingkat piksel (\textit{pixel-level}) langsung dari spesialis
+radiologi untuk meningkatkan kualitas \textit{ground truth}; (2) Mengeksplorasi
+arsitektur berbasis \textit{Vision Transformer} (ViT) untuk perbandingan dengan
+pendekatan berbasis CNN; (3) Melakukan uji validasi klinis menggunakan data
+rontgen dari rumah sakit lokal di Indonesia; serta (4) Mengintegrasikan aplikasi
+web dengan sistem \textit{Picture Archiving and Communication System} (PACS)
+rumah sakit.
+
+% ============================================================================
+% DAFTAR PUSTAKA
+% ============================================================================
+\bibliography{references}
+
+\end{document}
