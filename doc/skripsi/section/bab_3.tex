@@ -582,7 +582,7 @@ Proses pembuatan peta panas Grad-CAM terdiri dari beberapa tahapan:
   \begin{equation}
     L_{\text{CAM}} = \text{ReLU}\!\left(\sum_k \alpha_k \cdot \mathbf{A}^k\right)
   \end{equation}
-  \item \textbf{Normalisasi \& Visualisasi}: Peta panas dinormalisasi ke rentang $[0, 1]$ lalu diperbesar kembali ke ukuran citra asli (512 $\times$ 512 piksel). Peta panas ini kemudian diubah menjadi visualisasi warna (merah untuk area paling fokus, biru untuk area yang diabaikan) dan ditumpangkan di atas citra rontgen dada asli.
+  \item \textbf{Normalisasi \& Visualisasi}: Peta panas dinormalisasi ke rentang $[0, 1]$ lalu diperbesar kembali ke ukuran citra asli (512 $\times$ 512 piksel). Peta panas ini kemudian diwarnai menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}) --- di mana warna kuning cerah/putih menandakan area paling fokus dan hitam/ungu gelap untuk area yang diabaikan --- lalu ditumpangkan di atas citra rontgen dada asli.
 \end{enumerate}
 
 \begin{figure}[htbp]
