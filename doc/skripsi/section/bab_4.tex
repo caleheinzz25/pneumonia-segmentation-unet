@@ -338,12 +338,31 @@ Grad-CAM bekerja dengan cara memanfaatkan nilai gradien yang mengalir kembali pa
 
 di mana $\mathbf{A}^k$ adalah peta fitur pada saluran konvolusi terakhir. Fungsi ReLU memastikan hanya area yang berkontribusi positif terhadap deteksi saja yang ditampilkan.
 
-\subsection{Kesesuaian Medis}
+\subsection{Kesesuaian Medis dan Penggunaan Skala Termal INFERNO}
 
-Peta panas Grad-CAM ditampilkan menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}), di mana warna kuning cerah/putih menandakan pusat \textit{hotspot} lesi infeksi pneumonia berat, warna merah/oranye menandakan daerah transisi perilesional, dan warna hitam/ungu gelap mengindikasikan jaringan paru-paru sehat. Dari hasil percobaan, perhatian model secara konsisten terpusat pada:
+Peta panas Grad-CAM dalam sistem ini ditampilkan menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}). Pemilihan skala termal ini menggantikan skala pelangi (\textit{JET colormap}) konvensional untuk menghindari munculnya garis batas semu (\textit{false borders}) akibat perubahan persepsi kecerahan yang tidak seragam (\textit{perceptually non-uniform}), sekaligus memberikan kontras tinggi antara jaringan paru sehat yang tetap gelap dengan area infeksi yang berwarna terang.
 
+Rincian pembagian gradasi warna dan interpretasi klinis skala termal \textit{INFERNO} disajikan pada Tabel \ref{tab:inferno_spectrum}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Interpretasi klinis spektrum warna peta panas Grad-CAM (\textit{INFERNO Medical Thermal Colormap}).}
+  \label{tab:inferno_spectrum}
+  \begin{tabularx}{\textwidth}{ccX}
+    \toprule
+    \textbf{Warna Peta Panas} & \textbf{Rentang Probabilitas} & \textbf{Interpretasi Klinis / Area Fokus Model} \\
+    \midrule
+    Kuning Cerah / Putih & $0,8 - 1,0$ & Pusat \textit{hotspot} lesi infeksi pneumonia berat (konsolidasi tinggi) \\
+    Oranye               & $0,6 - 0,8$ & Aktivasi tinggi / area margin lesi transisi \\
+    Merah Tua            & $0,3 - 0,6$ & Aktivasi sedang / area perilesional di sekitar infeksi \\
+    Hitam / Ungu Gelap   & $0,0 - 0,3$ & Jaringan paru-paru sehat atau latar belakang (bebas infeksi) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Dari hasil eksperimen, perhatian model secara konsisten terpusat pada:
 \begin{itemize}
-  \item Area bercak putih (opasitas) abnormal pada paru-paru yang memang merupakan lokasi pneumonia.
+  \item Area bercak putih (opasitas) abnormal pada paru-paru yang memang merupakan lokasi lesi pneumonia.
   \item Garis batas antara area paru yang sehat dan area yang terinfeksi, yang merupakan informasi paling penting untuk proses segmentasi.
   \item Pola sebaran yang berbeda, di mana pneumonia bakteri terlihat memusat di satu bagian paru (\textit{lobar}), sedangkan pneumonia virus menyebar luas di kedua sisi paru-paru.
 \end{itemize}
