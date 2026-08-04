@@ -26,7 +26,6 @@ doc/**/*.snm
 doc/**/*.synctex.gz
 doc/markitdown/
 doc/refrence/
-doc/skripsi/*.pdf
 doc/skripsi/*.aux
 doc/skripsi/*.log
 doc/skripsi/*.bbl
