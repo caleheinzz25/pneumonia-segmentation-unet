@@ -186,16 +186,28 @@ Tahap kelima adalah menguji model yang sudah dilatih. Pengujian dilakukan secara
 
 Fase terakhir adalah menyajikan model terbaik agar bisa digunakan oleh dokter secara nyata. Model dikemas dalam bentuk aplikasi web prototipe memakai \textbf{Gradio}. Aplikasi ini dirancang agar dokter cukup mengunggah foto rontgen dada (format DICOM, PNG, atau JPEG) ke browser, lalu sistem akan otomatis menampilkan area pneumonia, peta panas Grad-CAM, perkiraan tingkat keparahan, serta statistik kepercayaan prediksi model.
 
-\section{Alur Penelitian}
-
-Alur penelitian ini dirancang secara berurutan mulai dari awal pengumpulan data hingga pembuatan aplikasi web. Secara garis besar, alur kerja dimulai dari mengumpulkan dataset, melakukan pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), melatih model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), mengevaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, membuat visualisasi Grad-CAM, hingga terakhir membungkusnya ke dalam web Gradio.
+Alur logika sistem deteksi dari sisi pengguna dimodelkan menggunakan \textit{Activity Diagram} yang disajikan pada Gambar~\ref{fig:activity_diagram}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth,height=0.45\textheight,keepaspectratio]{img/flowchart_penelitian.png}
-  \caption{Alur Penelitian Deteksi Pneumonia.}
-  \label{fig:flowchart_penelitian}
+  \includegraphics[width=0.75\textwidth,height=0.55\textheight,keepaspectratio]{img/activity_diagram.png}
+  \caption{\textit{Activity Diagram} Alur Proses Inferensi dan Analisis Sistem Deteksi Pneumonia pada Fase Penerapan.}
+  \label{fig:activity_diagram}
 \end{figure}
+
+Penjelasan rincian tahapan aktivitas berdasarkan Gambar~\ref{fig:activity_diagram} adalah sebagai berikut:
+\begin{enumerate}
+  \item \textbf{Inisiasi Aktivitas}: Tenaga medis mengunggah file citra rontgen dada ke panel Gradio.
+  \item \textbf{Pra-pemrosesan Paru}: Sistem memuat citra dan melakukan pemanggilan model PSPNet untuk mendeteksi koordinat area organ paru-paru kiri dan kanan.
+  \item \textbf{Pencabangan Kondisi (\textit{Decision})}:
+  \begin{itemize}
+    \item Jika masker organ paru berhasil dihasilkan, sistem mengalikan masker biner tersebut dengan citra asli (\textit{element-wise multiplication}) untuk memotong latar belakang luar rontgen (\textit{Lung Masking}).
+    \item Jika gagal (misalnya karena anatomi paru tidak utuh atau citra terlalu bising), sistem akan menggunakan citra asli tanpa pemotongan sebagai \textit{fallback} pertahanan komputasi.
+  \end{itemize}
+  \item \textbf{Proses Segmentasi}: Citra masukan yang telah disaring dilewatkan ke model utama U-Net dengan atensi sCSE untuk memprediksi probabilitas pneumonia tingkat piksel. Nilai ambang batas 0,65 diterapkan untuk menyaring piksel positif pneumonia.
+  \item \textbf{Analisis Tambahan}: Secara paralel, sistem menghitung visualisasi gradien lokal untuk menghasilkan heatmap Grad-CAM, serta menghitung rasio piksel terarsir pneumonia terhadap luas paru-paru untuk klasifikasi keparahan dan lateralitas.
+  \item \textbf{Penyajian Hasil}: Sistem mengirimkan dan merender seluruh hasil visualisasi (\textit{overlay}, Grad-CAM) dan data laporan ke layar antarmuka pengguna web Gradio.
+\end{enumerate}
 
 \section{Arsitektur Sistem Keseluruhan}
 
@@ -217,52 +229,25 @@ Sistem deteksi pneumonia yang dibangun bekerja sebagai sebuah rangkaian proses m
 
 \section{Pemodelan UML Sistem}
 
-Untuk memodelkan rancangan interaksi aktor dengan sistem serta mendokumentasikan alur logika program secara sistematis, dirancang diagram pemodelan menggunakan konsep \textit{Unified Modeling Language} (UML), yang meliputi \textit{Use Case Diagram} dan \textit{Activity Diagram}.
+Untuk memodelkan rancangan interaksi aktor dengan sistem secara sistematis, dirancang diagram \textit{Use Case} menggunakan konsep \textit{Unified Modeling Language} (UML). Diagram ini menggambarkan fungsionalitas sistem dari sudut pandang interaksi aktor (pengguna akhir) dengan sistem.
 
-\subsection{\textit{Use Case Diagram} Antarmuka Web}
-
-\textit{Use Case Diagram} menggambarkan fungsionalitas sistem yang ditawarkan oleh aplikasi dari sudut pandang interaksi antara aktor (pengguna akhir) dengan sistem. Dalam sistem ini, aktor utamanya adalah tenaga medis (dokter umum, dokter spesialis radiologi, atau perawat) yang menggunakan aplikasi web Gradio untuk menganalisis pneumonia. Rancangan diagram ini disajikan pada Gambar \ref{fig:use_case_diagram}.
+\textit{Use Case Diagram} menggambarkan fungsionalitas sistem yang ditawarkan oleh aplikasi dari sudut pandang interaksi antara aktor (pengguna akhir) dengan sistem. Dalam sistem ini, aktor utamanya adalah tenaga medis (dokter umum, dokter spesialis radiologi, atau perawat) yang menggunakan aplikasi web Gradio untuk menganalisis pneumonia. Rancangan diagram ini disajikan pada Gambar~\ref{fig:use_case_diagram}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth,height=0.4\textheight,keepaspectratio]{img/use_case_diagram.png}
-  \caption{Use Case Diagram Interaksi Tenaga Medis dengan Aplikasi Web Gradio.}
+  \caption{\textit{Use Case Diagram} Interaksi Tenaga Medis dengan Aplikasi Web Gradio.}
   \label{fig:use_case_diagram}
 \end{figure}
 
-Berdasarkan Gambar \ref{fig:use_case_diagram}, terdapat 6 fungsi utama (\textit{use cases}) yang dapat diakses oleh Tenaga Medis:
+Berdasarkan Gambar~\ref{fig:use_case_diagram}, terdapat 6 fungsi utama (\textit{use cases}) yang dapat diakses oleh Tenaga Medis:
 \begin{enumerate}
   \item \textbf{UC1: Unggah Citra Rontgen Dada}: Tenaga medis dapat mengunggah citra medis berformat DICOM (\texttt{.dcm}) maupun gambar digital standar (.png, .jpg, .jpeg) pada panel input.
-  \item \textbf{UC2: Atur Nilai Ambang Batas (Threshold)}: Menggeser pengatur slider nilai ambang batas probabilitas (rentang 0,1 hingga 0,9) untuk memfilter tingkat kepekaan arsiran deteksi.
+  \item \textbf{UC2: Atur Nilai Ambang Batas (\textit{Threshold})}: Menggeser pengatur slider nilai ambang batas probabilitas (rentang 0,1 hingga 0,9) untuk memfilter tingkat kepekaan arsiran deteksi.
   \item \textbf{UC3: Lakukan Analisis Deteksi}: Menjalankan tombol interaksi untuk melakukan inferensi model segmentasi paru-paru (PSPNet) dan model utama (U-Net sCSE).
   \item \textbf{UC4: Visualisasi Hasil Segmentasi \& Heatmap}: Menampilkan gambar rontgen bertumpuk arsiran merah pneumonia serta visualisasi sebaran fokus model berbasis Grad-CAM secara visual.
   \item \textbf{UC5: Lihat Analisis Keparahan \& Letak Lateralitas}: Meninjau laporan diagnosis berupa rasio persentase luas infeksi, derajat keparahan (5 tingkat), letak lateralitas sebaran infeksi, dan nilai kepercayaan rata-rata.
-  \item \textbf{UC6: Reset Tampilan (Clear)}: Mengosongkan panel input dan output untuk mengembalikan kondisi aplikasi ke keadaan awal.
-\end{enumerate}
-
-\subsection{\textit{Activity Diagram} Alur Deteksi Sistem}
-
-\textit{Activity Diagram} memodelkan alur kerja logika dan urutan aktivitas proses bisnis di dalam sistem mulai dari inisiasi masukan hingga luaran akhir. Diagram ini menunjukkan bagaimana data citra mengalir secara modular dari tindakan aktor ke pemrosesan otomatis model kecerdasan buatan. Alur logika tersebut disajikan pada Gambar \ref{fig:activity_diagram}.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.75\textwidth,height=0.55\textheight,keepaspectratio]{img/activity_diagram.png}
-  \caption{Activity Diagram Alur Proses Inferensi dan Analisis Sistem Deteksi Pneumonia.}
-  \label{fig:activity_diagram}
-\end{figure}
-
-Penjelasan rincian tahapan aktivitas berdasarkan Gambar \ref{fig:activity_diagram} adalah sebagai berikut:
-\begin{enumerate}
-  \item \textbf{Inisiasi Aktivitas}: Tenaga medis mengunggah file citra rontgen dada ke panel Gradio.
-  \item \textbf{Pra-pemrosesan Paru}: Sistem memuat citra dan melakukan pemanggilan model PSPNet untuk mendeteksi koordinat area organ paru-paru kiri dan kanan.
-  \item \textbf{Pencabangan Kondisi (Decision)}: 
-  \begin{itemize}
-    \item Jika masker organ paru berhasil dihasilkan, sistem mengalikan masker biner tersebut dengan citra asli (\textit{element-wise multiplication}) untuk memotong latar belakang luar rontgen (\textit{Lung Masking}).
-    \item Jika gagal (misalnya karena anatomi paru tidak utuh atau citra terlalu bising), sistem akan menggunakan citra asli tanpa pemotongan sebagai \textit{fallback} pertahanan komputasi.
-  \end{itemize}
-  \item \textbf{Proses Segmentasi}: Citra masukan yang telah disaring dilewatkan ke model utama U-Net dengan atensi sCSE untuk memprediksi probabilitas pneumonia tingkat piksel. Nilai ambang batas 0,65 diterapkan untuk menyaring piksel positif pneumonia.
-  \item \textbf{Analisis Tambahan}: Secara paralel, sistem menghitung visualisasi gradien lokal untuk menghasilkan heatmap Grad-CAM, serta menghitung rasio piksel terarsir pneumonia terhadap luas paru-paru untuk klasifikasi keparahan dan lateralitas.
-  \item \textbf{Penyajian Hasil}: Sistem mengirimkan dan merender seluruh hasil visualisasi (\textit{overlay}, Grad-CAM) dan data laporan ke layar antarmuka pengguna web Gradio.
+  \item \textbf{UC6: Reset Tampilan (\textit{Clear})}: Mengosongkan panel input dan output untuk mengembalikan kondisi aplikasi ke keadaan awal.
 \end{enumerate}
 
 \section{Dataset dan Pengumpulan Data}
