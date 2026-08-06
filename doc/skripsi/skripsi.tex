@@ -906,16 +906,7 @@ Tahap kelima adalah menguji model yang sudah dilatih. Pengujian dilakukan secara
 
 Fase terakhir adalah menyajikan model terbaik agar bisa digunakan oleh dokter secara nyata. Model dikemas dalam bentuk aplikasi web interaktif memakai \textbf{Gradio}. Aplikasi ini dirancang agar dokter cukup mengunggah foto rontgen dada (format DICOM, PNG, atau JPEG) ke browser, lalu sistem akan otomatis menampilkan area pneumonia, peta panas Grad-CAM, perkiraan tingkat keparahan, serta statistik kepercayaan prediksi model.
 
-\section{Alur Penelitian}
-
-Alur penelitian ini dirancang secara berurutan mulai dari awal pengumpulan data hingga pembuatan aplikasi web. Secara garis besar, alur kerja dimulai dari mengumpulkan dataset, melakukan pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), melatih model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), mengevaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, membuat visualisasi Grad-CAM, hingga terakhir membungkusnya ke dalam web Gradio. Alur penelitian secara keseluruhan dapat dilihat pada Gambar~\ref{fig:flowchart_penelitian}.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth,height=0.45\textheight,keepaspectratio]{img/flowchart_penelitian.png}
-  \caption{Alur Penelitian Deteksi Pneumonia.}
-  \label{fig:flowchart_penelitian}
-\end{figure}
+Secara garis besar, alur kerja penelitian dimulai dari pengumpulan dataset, pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), pelatihan model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), evaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, pembuatan visualisasi Grad-CAM, hingga terakhir pembungkusan ke dalam web Gradio. Keseluruhan alur ini dirangkum dalam kerangka CRISP-DM yang telah diuraikan pada fase-fase sebelumnya.
 
 \section{Arsitektur Sistem Keseluruhan}
 
