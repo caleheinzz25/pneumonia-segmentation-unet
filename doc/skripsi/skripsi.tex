@@ -440,8 +440,6 @@ Dengan mengucapkan segala puji dan syukur atas kehadirat Allah SWT yang telah me
   \item Prof. Dr. Ing. Adang Suhendra, S.Si., S.Kom., MSc., selaku Dekan Fakultas Teknologi Industri Universitas Gunadarma.
   \item Prof. Dr. Lintang Yuniar Banowosari, S.Kom., MSc., selaku Ketua Program Studi Informatika Universitas Gunadarma.
   \item Dr. Tavipia Rumambi, SKom., MMSI., selaku dosen pembimbing yang telah memberikan banyak masukan, arahan serta bimbingan kepada saya mulai dari awal sampai selesainya skripsi ini.
-  \item Dr. Irwan Bastian, SKom., MM., selaku dosen penguji yang telah memberikan saran dan masukan yang berharga demi penyempurnaan skripsi ini.
-  \item Dr. Yulia Chalri, SKom., MM., selaku dosen penguji yang telah memberikan kritik, saran, dan arahan yang sangat membantu dalam perbaikan skripsi ini.
   \item Bapak Dr. Edi Sukirman, S.Si., MM., M.I.Kom., selaku Kepala Bagian Sidang Ujian Universitas Gunadarma.
   \item Seluruh Bapak dan Ibu Dosen Universitas Gunadarma, khususnya Dosen Program Studi Informatika, yang telah memberikan ilmu, pengalaman, dan bimbingan selama masa perkuliahan sehingga penulis memiliki bekal yang cukup untuk menyelesaikan skripsi ini.
   \item Bapak Sonny dan Ibu Dewi, selaku orang tua tercinta yang selalu mendukung dan terus memberikan motivasi kepada penulis.
@@ -678,6 +676,8 @@ Hubungan logis (benang merah) antara konsep dasar CNN dengan arsitektur U-Net te
 
 Kunci keberhasilan U-Net yang menghubungkan kedua jalur ini adalah penggunaan \textbf{\textit{skip connections}}. Jalur ini menyalin peta fitur resolusi tinggi dari jalur \textit{encoder} dan menggabungkannya (\textit{concatenation}) secara langsung dengan peta fitur pada jalur \textit{decoder} di tingkat resolusi yang setara. Melalui mekanisme ini, detail spasial halus yang hilang selama proses konvolusi di \textit{encoder} dapat dipulihkan di \textit{decoder}, sehingga batas-batas lesi pneumonia yang rumit dan tidak beraturan dapat disegmentasi dengan akurasi dan presisi tingkat piksel yang sangat tinggi.
 
+Struktur simetris arsitektur U-Net yang terdiri dari jalur \textit{encoder}, \textit{skip connections}, dan \textit{decoder} disajikan pada Gambar~\ref{fig:arsitektur_unet}.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth,height=0.45\textheight,keepaspectratio]{img/arsitektur_unet.png}
@@ -691,7 +691,7 @@ Agar model U-Net bisa membedakan area infeksi pneumonia dengan bagian gambar lai
 
 Modul cSE bekerja dengan cara mengevaluasi saluran warna atau fitur (\textit{channel}) mana yang paling penting. Modul ini memperkecil dimensi gambar menjadi 1$\times$1 piksel menggunakan \textit{Global Average Pooling}, lalu memprosesnya untuk memberikan bobot pada setiap \textit{channel}. Saluran yang tidak penting akan ditekan, sedangkan saluran yang penting akan diperkuat \parencite{roy2018scse}.
 
-Sebaliknya, modul sSE bekerja pada area spasial gambar. Modul ini menggunakan konvolusi 1$\times$1 untuk mendeteksi posisi piksel mana yang paling penting pada gambar. Hasil dari modul cSE dan sSE ini kemudian digabungkan untuk menghasilkan fitur baru yang sudah terfokus baik secara area spasial maupun salurannya.
+Sebaliknya, modul sSE bekerja pada area spasial gambar. Modul ini menggunakan konvolusi 1$\times$1 untuk mendeteksi posisi piksel mana yang paling penting pada gambar. Hasil dari modul cSE dan sSE ini kemudian digabungkan untuk menghasilkan fitur baru yang sudah terfokus baik secara area spasial maupun salurannya. Alur kerja mekanisme sCSE secara keseluruhan ditunjukkan pada Gambar~\ref{fig:mekanisme_scse}.
 
 \begin{figure}[htbp]
     \centering
@@ -704,7 +704,7 @@ Sebaliknya, modul sSE bekerja pada area spasial gambar. Modul ini menggunakan ko
 
 Pada kasus medis, mengumpulkan data citra rontgen yang sudah diberi tanda (anotasi) secara manual oleh dokter ahli sangatlah sulit dan memakan waktu. Untuk mengatasi masalah ini, digunakan teknik \textit{transfer learning}. Teknik ini meminjam bobot (\textit{weights}) dari model yang sudah dilatih sebelumnya pada dataset gambar umum berskala besar seperti ImageNet, kemudian menerapkannya pada model deteksi pneumonia ini.
 
-Pada penelitian ini, \textit{backbone} atau bagian \textit{encoder} U-Net diganti menggunakan arsitektur \textit{EfficientNet-B3}. \textit{EfficientNet} adalah model buatan Google yang terkenal sangat efisien dan akurat \parencite{tan2019efficientnet}. Model ini menggunakan metode \textit{Compound Scaling}, yaitu menyeimbangkan lebar, kedalaman, dan resolusi gambar input pada jaringan saraf secara bersamaan agar kinerjanya optimal tanpa membebani memori komputer. Dengan menggunakan \textit{EfficientNet-B3} yang sudah terlatih, proses pelatihan model menjadi lebih cepat dan risiko model mengalami gagal generalisasi (\textit{overfitting}) dapat ditekan.
+Pada penelitian ini, \textit{backbone} atau bagian \textit{encoder} U-Net diganti menggunakan arsitektur \textit{EfficientNet-B3}. \textit{EfficientNet} adalah model buatan Google yang terkenal sangat efisien dan akurat \parencite{tan2019efficientnet}. Model ini menggunakan metode \textit{Compound Scaling}, yaitu menyeimbangkan lebar, kedalaman, dan resolusi gambar input pada jaringan saraf secara bersamaan agar kinerjanya optimal tanpa membebani memori komputer. Dengan menggunakan \textit{EfficientNet-B3} yang sudah terlatih, proses pelatihan model menjadi lebih cepat dan risiko model mengalami gagal generalisasi (\textit{overfitting}) dapat ditekan. Konsep \textit{Compound Scaling} pada arsitektur \textit{EfficientNet} diilustrasikan pada Gambar~\ref{fig:arsitektur_efficientnet}.
 
 \begin{figure}[htbp]
     \centering
@@ -723,7 +723,7 @@ Pra-pemrosesan ini dilakukan menggunakan model segmentasi PSPNet yang sudah dila
 
 Penggunaan teknologi AI di rumah sakit seringkali diragukan oleh para dokter karena cara kerja model yang seperti "kotak hitam" (\textit{Black Box}) — di mana pengguna tidak tahu alasan mengapa model memberikan hasil deteksi tersebut. Untuk mengatasi hal ini, digunakan metode \textit{Explainable AI} (XAI) melalui teknik \textit{Gradient-weighted Class Activation Mapping} (Grad-CAM) \parencite{selvaraju2017gradcam}.
 
-Grad-CAM membantu menjelaskan keputusan model dengan cara menampilkan peta panas (\textit{heatmap}) di atas gambar rontgen asli. Teknik ini bekerja dengan memanfaatkan gradien nilai pada lapisan konvolusi terakhir saat model melakukan inferensi. Area berwarna merah atau hangat menunjukkan wilayah yang paling diperhatikan oleh model saat mendeteksi pneumonia, sehingga dokter dapat memverifikasi apakah keputusan model tersebut sudah tepat secara medis atau tidak.
+Grad-CAM membantu menjelaskan keputusan model dengan cara menampilkan peta panas (\textit{heatmap}) di atas gambar rontgen asli. Teknik ini bekerja dengan memanfaatkan gradien nilai pada lapisan konvolusi terakhir saat model melakukan inferensi. Area berwarna merah atau hangat menunjukkan wilayah yang paling diperhatikan oleh model saat mendeteksi pneumonia, sehingga dokter dapat memverifikasi apakah keputusan model tersebut sudah tepat secara medis atau tidak. Tahapan visualisasi Grad-CAM secara lengkap disajikan pada Gambar~\ref{fig:gradcam_proses}.
 
 \begin{figure}[htbp]
     \centering
@@ -908,7 +908,7 @@ Fase terakhir adalah menyajikan model terbaik agar bisa digunakan oleh dokter se
 
 \section{Alur Penelitian}
 
-Alur penelitian ini dirancang secara berurutan mulai dari awal pengumpulan data hingga pembuatan aplikasi web. Secara garis besar, alur kerja dimulai dari mengumpulkan dataset, melakukan pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), melatih model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), mengevaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, membuat visualisasi Grad-CAM, hingga terakhir membungkusnya ke dalam web Gradio.
+Alur penelitian ini dirancang secara berurutan mulai dari awal pengumpulan data hingga pembuatan aplikasi web. Secara garis besar, alur kerja dimulai dari mengumpulkan dataset, melakukan pra-pemrosesan (mengubah DICOM, memotong area paru otomatis, menstandarkan ukuran, dan membuat masker acuan), melatih model U-Net sCSE dengan \textit{backbone} EfficientNet-B3 menggunakan teknik pelatihan modern (AMP, akumulasi gradien, pembekuan \textit{encoder}), mengevaluasi performa berdasarkan metrik Precision, Recall, dan Specificity, membuat visualisasi Grad-CAM, hingga terakhir membungkusnya ke dalam web Gradio. Alur penelitian secara keseluruhan dapat dilihat pada Gambar~\ref{fig:flowchart_penelitian}.
 
 \begin{figure}[htbp]
   \centering
@@ -927,6 +927,8 @@ Sistem deteksi pneumonia yang dibangun bekerja sebagai sebuah rangkaian proses m
   \item \textbf{Modul Keterjelasan (XAI)}: Membuat peta panas Grad-CAM dari lapisan konvolusi terakhir untuk mendeteksi area fokus keputusan model.
   \item \textbf{Modul Analisis \& UI}: Menghitung persentase keparahan infeksi, menentukan sisi paru yang sakit (kiri, kanan, atau bilateral), lalu menampilkan hasilnya di web Gradio.
 \end{enumerate}
+
+Diagram arsitektur sistem secara keseluruhan disajikan pada Gambar~\ref{fig:arsitektur_sistem}.
 
 \begin{figure}[htbp]
   \centering
@@ -995,7 +997,7 @@ Anotasi pada dataset ini disediakan oleh tim dokter radiologi dari RSNA dan dile
 
 \subsection{Distribusi dan Statistik Dataset}
 
-Dataset RSNA memiliki karakteristik distribusi kelas yang tidak merata (\textit{class imbalance}). Berdasarkan anotasi yang tersedia, pembagian kelas pada dataset pelatihan adalah sebagai berikut:
+Dataset RSNA memiliki karakteristik distribusi kelas yang tidak merata (\textit{class imbalance}). Berdasarkan anotasi yang tersedia, pembagian kelas pada dataset pelatihan dirangkum pada Tabel~\ref{tab:distribusi_dataset}.
 
 \begin{table}[H]
   \centering
@@ -1022,7 +1024,7 @@ Dataset dibagi menjadi dua subset utama menggunakan metode \textit{stratified sp
 
 \section{Pra-pemrosesan Citra}
 
-Pra-pemrosesan citra merupakan tahapan kritis yang bertujuan menstandarkan format, kualitas visual, dan ruang domain informasi dari citra masukan sebelum digunakan dalam proses pelatihan maupun inferensi. Tahapan pra-pemrosesan yang diimplementasikan dalam penelitian ini dirancang secara modular dan mencakup beberapa sub-tahapan berikut:
+Pra-pemrosesan citra merupakan tahapan kritis yang bertujuan menstandarkan format, kualitas visual, dan ruang domain informasi dari citra masukan sebelum digunakan dalam proses pelatihan maupun inferensi. Tahapan pra-pemrosesan yang diimplementasikan dalam penelitian ini dirancang secara modular, dengan alur lengkap ditunjukkan pada Gambar~\ref{fig:pipeline_preprocessing}, dan mencakup beberapa sub-tahapan berikut:
 
 \begin{figure}[htbp]
   \centering
@@ -1091,7 +1093,7 @@ Untuk memperluas variasi pola dalam data latih secara artifisial, mengurangi ris
   \item \textbf{\textit{Coarse Dropout}} dengan probabilitas 20\%: Menghapus 1--4 area persegi acak berukuran 20--60 piksel pada citra latih untuk mensimulasikan oklusi atau variasi kepadatan bayangan organ.
 \end{enumerate}
 
-Penting untuk dicatat bahwa augmentasi geometrik (flip, shift, rotate, grid distortion) diterapkan secara sinkron pada pasangan (citra, masker), sehingga masker \textit{ground truth} selalu terdistorsi dengan transformasi yang identik dengan citranya. Augmentasi fotometrik (brightness, contrast, gamma, CLAHE, noise) dan dropout (grid dropout, coarse dropout) hanya diterapkan pada citra saja, bukan pada masker.
+Penting untuk dicatat bahwa augmentasi geometrik (flip, shift, rotate, grid distortion) diterapkan secara sinkron pada pasangan (citra, masker), sehingga masker \textit{ground truth} selalu terdistorsi dengan transformasi yang identik dengan citranya. Augmentasi fotometrik (brightness, contrast, gamma, CLAHE, noise) dan dropout (grid dropout, coarse dropout) hanya diterapkan pada citra saja, bukan pada masker. Contoh hasil penerapan berbagai teknik augmentasi tersebut disajikan pada Gambar~\ref{fig:contoh_augmentasi}.
 
 \begin{figure}[htbp]
   \centering
@@ -1104,7 +1106,7 @@ Penting untuk dicatat bahwa augmentasi geometrik (flip, shift, rotate, grid dist
 
 \subsection{Model Utama: \textit{U-Net dengan Atensi sCSE}}
 
-Model segmentasi pneumonia yang diusulkan menggunakan arsitektur \textbf{U-Net} dengan mekanisme atensi sCSE (\textit{Spatial and Channel Squeeze-and-Excitation}) yang diimplementasikan melalui pustaka \textit{Segmentation Models PyTorch} (SMP). Model ini dikonfigurasi sebagai berikut:
+Model segmentasi pneumonia yang diusulkan menggunakan arsitektur \textbf{U-Net} dengan mekanisme atensi sCSE (\textit{Spatial and Channel Squeeze-and-Excitation}) yang diimplementasikan melalui pustaka \textit{Segmentation Models PyTorch} (SMP). Spesifikasi konfigurasi arsitektur model disajikan pada Tabel~\ref{tab:model_config}.
 
 \begin{table}[H]
   \centering
@@ -1217,6 +1219,8 @@ Konfigurasi lengkap pelatihan disajikan pada Tabel \ref{tab:training_config}.
   \end{tabular}
 \end{table}
 
+Alur pipeline pelatihan model secara menyeluruh disajikan pada Gambar~\ref{fig:pipeline_pelatihan}.
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.8\textwidth,height=0.4\textheight,keepaspectratio]{img/pipeline_pelatihan.png}
@@ -1315,6 +1319,8 @@ Proses pembuatan peta panas Grad-CAM terdiri dari beberapa tahapan:
   \end{equation}
   \item \textbf{Normalisasi \& Visualisasi}: Peta panas dinormalisasi ke rentang $[0, 1]$ lalu diperbesar kembali ke ukuran citra asli (512 $\times$ 512 piksel). Peta panas ini kemudian diwarnai menggunakan skala termal medis \textit{INFERNO} (\texttt{cv2.COLORMAP\_INFERNO}) --- di mana warna kuning cerah/putih menandakan area paling fokus dan hitam/ungu gelap untuk area yang diabaikan --- lalu ditumpangkan di atas citra rontgen dada asli.
 \end{enumerate}
+
+Pipeline inferensi lengkap mulai dari masukan citra hingga keluaran laporan dan Grad-CAM disajikan pada Gambar~\ref{fig:pipeline_inferensi}.
 
 \begin{figure}[htbp]
   \centering
@@ -1766,6 +1772,8 @@ Sistem yang dibuat tidak hanya menghasilkan gambar arsiran biner saja, melainkan
   \item \textbf{Analisis Sisi Infeksi (Lateralitas)}: Mengukur perbandingan luas area infeksi antara paru-paru kiri dan kanan, serta bagian atas dan bawah, untuk memberikan informasi posisi infeksi yang jelas kepada dokter.
 \end{enumerate}
 
+Klasifikasi lima tingkat keparahan tersebut dirinci lebih lanjut pada Tabel~\ref{tab:severity_grading}.
+
 \begin{table}[htbp]
   \centering
   \caption{Klasifikasi tingkat keparahan infeksi berdasarkan persentase area paru-paru yang terinfeksi.}
@@ -1941,7 +1949,7 @@ Berdasarkan seluruh hasil pengujian pada Tabel \ref{tab:blackbox_testing}, dapat
 \section{Analisis Penghapusan Komponen (Ablation Study)}
 % ============================================================
 
-Untuk mengetahui seberapa besar pengaruh setiap komponen terhadap kinerja model keseluruhan, dilakukan analisis pengaruh (\textit{ablation study}) secara kualitatif berdasarkan hasil eksperimen:
+Untuk mengetahui seberapa besar pengaruh setiap komponen terhadap kinerja model keseluruhan, dilakukan analisis pengaruh (\textit{ablation study}) secara kualitatif berdasarkan hasil eksperimen, sebagaimana dirangkum pada Tabel~\ref{tab:ablation}.
 
 \begin{table}[htbp]
   \centering
