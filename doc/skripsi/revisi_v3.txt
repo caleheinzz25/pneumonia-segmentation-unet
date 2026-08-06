@@ -1,0 +1,48 @@
+=== POIN-POIN REVISI DAN PEMBARUAN NASKAH SKRIPSI (REVISI V3) ===
+
+1. Pembaruan Referensi WHO Terbaru (WHO Guidelines / Reports 2020-2024):
+   - Memperbarui referensi WHO 2015 yang sudah usang dalam latar belakang dan bab 2 dengan publikasi/laporan resmi WHO terbaru (WHO Global Pneumonia & Health Reports 2020-2024).
+
+2. Standarisasi Format Sitasi Harvard Style:
+   - Memastikan seluruh sitasi dalam teks (in-text citations) dan daftar pustaka (bibliography) terformat secara konsisten mengikuti standar Harvard Reference Format.
+
+3. Rujukan Gambar dan Tabel pada Teks Badan Skripsi (14 Titik Rujukan):
+   - Menambahkan kalimat rujukan eksplisit dalam paragraf teks untuk seluruh gambar dan tabel yang sebelumnya belum memiliki rujukan (misal: Gambar 2.1, Gambar 3.4, Tabel 3.2, Tabel 4.5, dll.) sesuai masukan penguji.
+
+4. Penyederhanaan Metode Penelitian (Mengacu Murni CRISP-DM):
+   - Menghapus section terpisah "Alur Penelitian" agar metode penelitian dalam Bab 3 secara murni mengacu pada 6 fase standar CRISP-DM.
+   - Mengintegrasikan narasi alur penelitian ke dalam Fase 6 (Deployment) sebagai penutup metode tanpa membuat duplikasi metode.
+
+5. Pembaruan Visualisasi Colormap INFERNO (Gambar 4.3):
+   - Memperbarui visualisasi probability heatmap pada Gambar 4.3 dari skala pelangi (JET) lama menjadi skala termal medis INFERNO (latar belakang ungu gelap/hitam, hotspot lesi kuning cerah/oranye-putih).
+   - Memperbarui narasi penjelasan visualisasi per kasus (Normal, Virus Ringan, Virus Sedang, Bakteri Berat) pada Subbab 4.3 di teks skripsi agar mencerminkan palet INFERNO secara akurat.
+
+6. Penyesuaian Overlay Deteksi Area Infeksi:
+   - Memperbarui warna overlay deteksi pada Gambar 4.3 menjadi warna Amber/Oranye (serasi dengan palet termal INFERNO) yang dilengkapi garis kontur emas di sekeliling lesi infeksi.
+   - Memperbaiki ekstraksi masking paru-paru dan memastikan heatmap probabilitas tampil penuh tanpa terpotong di tepi gambar.
+
+7. Pembaruan Panduan Visualisasi pada Web App Gradio & Buku Panduan:
+   - Memperbarui panel "Panduan Interpretasi & Nilai Rujukan" pada aplikasi web Gradio (app/gradio_app.py) agar mencakup penjelasan visualisasi Overlay Amber/Oranye dan skala warna Heatmap INFERNO (Hitam/Ungu Gelap = sehat, Oranye/Kuning = lesi aktif, Putih = probabilitas puncak).
+   - Memperbarui Buku Panduan Aplikasi (doc/manual_book/manual_book.tex & manual_book.pdf) dan konfigurasi inference (config.yaml).
+
+8. Generasi Format Dokumen Tambahan (Microsoft Word / DOCX):
+   - Mengompilasi naskah skripsi lengkap terbaru (123 halaman) dari format LaTeX/PDF ke format Microsoft Word (skripsi.docx) untuk keperluan pemeriksaan perbaikan.
+
+
+===================================================================
+DRAFT PESAN REVISI UNTUK DOSEN PENGUJI / DOSPEM:
+
+Assalamualaikum Wr. Wb. Selamat Pagi / Siang, Bapak/Ibu Dosen.
+
+Menindaklanjuti hasil arahan dan revisi bimbingan/sidang skripsi, berikut saya sampaikan bahwa naskah skripsi dan sistem telah berhasil diperbarui dengan rincian poin revisi sebagai berikut:
+
+1. Referensi WHO Terbaru: Memperbarui rujukan WHO tahun 2015 ke publikasi resmi WHO terbaru (2020-2024).
+2. Standarisasi Sitasi: Seluruh sitasi dan daftar pustaka telah disesuaikan secara konsisten mengikuti format Harvard.
+3. Rujukan Gambar/Tabel: Seluruh gambar dan tabel (14 titik) dalam naskah kini telah dirujuk secara eksplisit dalam paragraf teks badan skripsi.
+4. Metode Penelitian Tunggal: Bab 3 disederhanakan murni mengacu pada 6 fase CRISP-DM tanpa duplikasi section alur penelitian.
+5. Visualisasi Heatmap INFERNO: Gambar 4.3 dan deskripsi visualnya telah diperbarui menggunakan palet termal medis INFERNO (hitam/ungu gelap ke kuning cerah/putih).
+6. Overlay Deteksi Amber/Oranye: Overlay lesi infeksi disesuaikan dengan warna Amber/Oranye berseri kontur emas dan heatmap penuh tanpa terpotong.
+7. Panduan Web App & Manual Book: Panel panduan interpretasi di aplikasi web Gradio dan Buku Panduan telah diperbarui menjelaskan skala warna INFERNO dan overlay Amber.
+8. File Output Word (.docx): Berkas skripsi.docx versi terbaru telah dibuat dari PDF hasil kompilasi final.
+
+File skripsi terbaru (.pdf dan .docx) serta kode program telah di-push ke repositori GitHub. Terima kasih banyak atas bimbingan dan arahan Bapak/Ibu.
