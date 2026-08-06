@@ -241,7 +241,7 @@ def grayscale_to_rgb(image: np.ndarray) -> np.ndarray:
 def overlay_mask(
     image: np.ndarray,
     mask: np.ndarray,
-    color: tuple[int, int, int] = (0, 0, 255),
+    color: tuple[int, int, int] = (0, 140, 255),
     alpha: float = 0.4,
 ) -> np.ndarray:
     """Overlay segmentation mask on image."""

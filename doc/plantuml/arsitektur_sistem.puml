@@ -1,0 +1,77 @@
+@startuml arsitektur_sistem
+skinparam backgroundColor white
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 10
+skinparam shadowing false
+skinparam componentBorderColor #34495E
+skinparam componentBackgroundColor #EAF2FF
+skinparam arrowColor #2C3E50
+skinparam packageBorderColor #2980B9
+skinparam packageFontColor #2C3E50
+skinparam packageFontStyle bold
+
+title Arsitektur Sistem Deteksi Pneumonia
+
+package "INPUT" #FFF8E1 {
+  component [Citra Rontgen Dada\n(Format DICOM / PNG)] as input
+}
+
+package "PRE-PROCESSING MODULE" #E8F5E9 {
+  component [DICOM Reader\n(pydicom)] as dcm
+  component [Normalisasi &\nResize 512×512] as norm
+  component [Lung Masking\n(PSPNet / torchxrayvision)] as pspnet
+  component [Citra Ter-mask\n(Hanya Area Paru)] as masked
+  
+  dcm -right-> norm
+  norm -right-> pspnet
+  pspnet -right-> masked
+}
+
+package "SEGMENTATION MODEL" #E3F2FD {
+  component [EfficientNet-B3\nEncoder (Backbone)] as encoder
+  component [Standard Skip\nConnections (U-Net)] as skip
+  component [sCSE Attention\nDecoder] as decoder
+  component [Sigmoid Output\n(Binary Mask)] as sigmoid
+  
+  encoder -right-> skip
+  skip -right-> decoder
+  decoder -right-> sigmoid
+}
+
+package "EXPLAINABILITY MODULE" #FCE4EC {
+  component [Grad-CAM\n(Last Encoder Block)] as gradcam
+  component [Heatmap Generation\n(Colormap Inferno)] as heatmap
+  
+  gradcam -right-> heatmap
+}
+
+package "OUTPUT & ANALYSIS" #F3E5F5 {
+  component [Segmentation Mask\n(Biner Pneumonia)] as seg_mask
+  component [Severity Grading\n(5-Tier: None~Very Severe)] as severity
+  component [Laterality Analysis\n(Left / Right / Bilateral)] as lateral
+  component [Confidence Statistics\n(Mean Sigmoid Score)] as conf
+  
+  seg_mask -right-> severity
+  seg_mask -right-> lateral
+  seg_mask -right-> conf
+}
+
+package "GRADIO WEB UI" #FFFDE7 {
+  component [Antarmuka Web\nInteraktif (Gradio)] as gradio
+}
+
+input -right-> dcm : "Baca DICOM"
+masked -down-> encoder : "Tensor Input"
+ 
+masked -down-> gradcam : "Input Tensor"
+encoder -down-> gradcam : "Aktivasi &\nGradien"
+
+sigmoid -down-> seg_mask : "Threshold >= 0.65"
+
+seg_mask -down-> gradio : "Tampilkan"
+heatmap -down-> gradio : "Tampilkan"
+severity -down-> gradio : "Tampilkan"
+lateral -down-> gradio : "Tampilkan"
+conf -down-> gradio : "Tampilkan"
+
+@enduml

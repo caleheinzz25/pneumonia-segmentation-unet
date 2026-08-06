@@ -122,7 +122,7 @@ inference:
   tta_merge_mode: "mean"
   output_dir: "outputs/predictions"
   save_overlay: true
-  overlay_color: [0, 0, 255]
+  overlay_color: [0, 140, 255]
   overlay_alpha: 0.4
 
 # ------ Evaluation ------

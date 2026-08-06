@@ -281,8 +281,8 @@ class PneumoniaDetectionApp:
             prob_rgb = cv2.cvtColor(prob_colored, cv2.COLOR_BGR2RGB)
 
             # --- Combine into 2x2 Grid with Labels -----------------------------
-            img_a = _add_label(overlay_rgb, "A. Overlay Infeksi")
-            img_b = _add_label(prob_rgb, "B. Heatmap Grad-CAM")
+            img_a = _add_label(overlay_rgb, "A. Overlay Infeksi (Amber)")
+            img_b = _add_label(prob_rgb, "B. Heatmap INFERNO")
             img_c = _add_label(lung_mask_rgb, "C. Masker Paru")
             img_d = _add_label(lung_img_rgb, "D. Paru Terisolasi")
 
@@ -572,7 +572,7 @@ class PneumoniaDetectionApp:
                     with gr.Accordion("📋 Panduan Interpretasi & Nilai Rujukan", open=False):
                         gr.Markdown(
                             """
-                            **Tingkat Keparahan berdasarkan Rasio Infeksi Paru:**
+                            ### 📊 1. Tingkat Keparahan (Rasio Infeksi Paru)
                             - **0%**: Normal ✅ (Tidak terdeteksi area infeksi)
                             - **0.1% - 5.0%**: Ringan (Mild) 🟡
                             - **5.1% - 15.0%**: Sedang (Moderate) 🟠
@@ -580,6 +580,17 @@ class PneumoniaDetectionApp:
                             - **> 30.0%**: Kritis (Critical) 🚨
                             
                             *Rasio infeksi dihitung sebagai persentase area terinfeksi pneumonia terhadap estimasi total area paru-paru.*
+                            
+                            ---
+                            
+                            ### 🎨 2. Panduan Visualisasi & Format Warna INFERNO
+                            - **A. Overlay Infeksi (Amber/Oranye)**: Masker transparan warna **Amber-Oranye** (serasi palet termal INFERNO) menyoroti region spesifik paru-paru yang terdeteksi terinfeksi pneumonia.
+                            - **B. Heatmap Probabilitas (INFERNO Medical Thermal Colormap)**:
+                              - ⬛ **Hitam / Ungu Gelap**: Nilai probabilitas 0% (Area paru-paru sehat / tanpa infeksi)
+                              - 🟧 **Oranye / Kuning Cerah**: Nilai probabilitas tinggi (Area lesi/infeksi aktif pneumonia)
+                              - ⬜ **Putih Terang**: Nilai probabilitas puncak (>95% keyakinan model)
+                            - **C. Masker Paru**: Segmentasi area organ paru-paru (*lung masking*).
+                            - **D. Paru Terisolasi**: Citra bagian paru yang telah dipisahkan dari latar belakang *chest X-ray*.
                             """
                         )
                         
